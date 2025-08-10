@@ -9,16 +9,21 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/userSlice";
 import { useEffect } from "react";
 import { clearMessage, setMessage } from "../../redux/slices/messageSlice";
+import { Grid } from 'antd';
+const { useBreakpoint } = Grid;
 const { SubMenu } = Menu;
 const { Header, Footer } = Layout;
 function LayoutCommon() {
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.user);
     console.log("User in LayoutCommon:", user);
-
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const dispatch = useDispatch();
     const [messageApi, contextHolder] = message.useMessage();
     const messageState = useSelector((state) => state.message);
+
+
     useEffect(() => {
         if (messageState) {
             messageApi.open({
@@ -38,6 +43,76 @@ function LayoutCommon() {
             dispatch(setMessage({ type: 'error', content: 'Đăng xuất thất bại. Vui lòng thử lại!' }));
         };
     }
+
+    const dropdownMenu = (
+        <Menu>
+            <Menu.Item key="chat" icon={<MessageOutlined />} onClick={() => navigate('/chat')}>
+                Trò chuyện với DABS Bot
+            </Menu.Item>
+            {user ? (
+                <>
+                    <Menu.Item key="profile" icon={<UserOutlined />} onClick={() => navigate('/profile')}>
+                        Thông tin cá nhân
+                    </Menu.Item>
+                    <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+                        Đăng xuất
+                    </Menu.Item>
+                </>
+            ) : (
+                <Menu.Item key="login" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
+                    Đăng nhập
+                </Menu.Item>
+            )}
+        </Menu>
+    );
+
+    const accountMenu = (
+        <Menu>
+            <Menu.Item key="greeting" disabled icon={<UserOutlined />}>
+                {user ? (user.fullname?.trim() || user.email || 'khách') : 'khách'}
+            </Menu.Item>
+            <Menu.Divider />
+            {user ? (
+                <>
+                    <Menu.Item
+                        key="booking-history"
+                        onClick={() => navigate('/booking-history')}
+                        icon={<CalendarOutlined />}
+                    >
+                        Lịch sử đặt khám
+                    </Menu.Item>
+                    <Menu.Item key="profile" onClick={() => navigate('/profile')} icon={<UserOutlined />}>
+                        Thông tin cá nhân
+                    </Menu.Item>
+                    <Menu.Item
+                        key="password"
+                        onClick={() => navigate('/account/change-password')}
+                        icon={<KeyOutlined />}
+                    >
+                        Đổi mật khẩu
+                    </Menu.Item>
+                    <Menu.Item key="health-records" icon={<FileTextOutlined />} onClick={() => navigate('/health-records')}>
+                        Hồ sơ bệnh nhân
+                    </Menu.Item>
+                    <Menu.Item key="records" icon={<FileTextOutlined />} onClick={() => navigate('/records')}>
+                        Phiếu khám
+                    </Menu.Item>
+                    <Menu.Item key="notification" icon={<BellOutlined />} onClick={() => navigate('/notifications')}>
+                        Thông báo
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+                        Đăng xuất
+                    </Menu.Item>
+                </>
+            ) : (
+                <Menu.Item key="login" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
+                    Đăng nhập
+                </Menu.Item>
+            )}
+        </Menu>
+    );
+
     return <>
         {contextHolder}
         <Layout className="layout-default">
@@ -67,70 +142,39 @@ function LayoutCommon() {
                         </div>
                         <div className="header__content__top__wrapper">
 
-                            <div className="header__content__top__wrapper__chat-button">
-                                <Button
-                                    type="primary"
-                                    icon={<MessageOutlined />}
-                                    onClick={() => navigate('/chat')}
-                                >
-                                    Trò chuyện với DABS Bot
-                                </Button>
-                            </div>
-
-                            <div className="header__content__top__wrapper__account">
-                                {user ? (
-                                    <Dropdown
-                                        overlay={
-                                            <Menu>
-                                                <Menu.Item key="greeting" disabled icon={<UserOutlined />}>
-                                                    {user ? (user.fullname?.trim() || user.email || 'khách') : 'khách'}
-                                                </Menu.Item>
-                                                <Menu.Divider />
-                                                {user ? (
-                                                    <>
-                                                        <Menu.Item key="booking-history" onClick={() => navigate('/booking-history')} icon={<CalendarOutlined />}>
-                                                            Lịch sử đặt khám
-                                                        </Menu.Item>
-                                                        <Menu.Item key="profile" onClick={() => navigate('/profile')} icon={<UserOutlined />}>
-                                                            Thông tin cá nhân
-                                                        </Menu.Item>
-                                                        <Menu.Item key="password" onClick={() => navigate('/account/change-password')} icon={<KeyOutlined />}>
-                                                            Đổi mật khẩu
-                                                        </Menu.Item>
-                                                        <Menu.Item key="health-records" icon={<FileTextOutlined />} onClick={() => navigate('/health-records')}>
-                                                            Hồ sơ bệnh nhân
-                                                        </Menu.Item>
-                                                        <Menu.Item key="records" icon={<FileTextOutlined />} onClick={() => navigate('/records')}>
-                                                            Phiếu khám
-                                                        </Menu.Item>
-                                                        <Menu.Item key="notification" icon={<BellOutlined />} onClick={() => navigate('/notifications')}>
-                                                            Thông báo
-                                                        </Menu.Item>
-                                                        <Menu.Divider />
-                                                        <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
-                                                            Đăng xuất
-                                                        </Menu.Item>
-                                                    </>
-                                                ) : (
-                                                    <Menu.Item key="login" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
-                                                        Đăng nhập
-                                                    </Menu.Item>
-                                                )}
-                                            </Menu>
-                                        }
-                                        placement="bottomRight"
-                                        trigger={['click']}
-                                    >
-                                        <Button type="primary" icon={<UserOutlined />}>
-                                            {user ? (user.fullname?.trim() || user.email) : 'Tài khoản'}
-                                        </Button>
-                                    </Dropdown>
-                                ) : (
-                                    <Button onClick={() => navigate('/login')} type="primary">
-                                        <UserOutlined /> Đăng nhập
+                            {isMobile ? (
+                                <Dropdown overlay={dropdownMenu} trigger={['click']} placement="bottomRight">
+                                    <Button type="default" icon={<MenuOutlined />}>
+                                        Menu
                                     </Button>
-                                )}
-                            </div>
+                                </Dropdown>
+                            ) : (
+                                <>
+                                    <div className="header__content__top__wrapper__chat-button">
+                                        <Button
+                                            type="primary"
+                                            icon={<MessageOutlined />}
+                                            onClick={() => navigate('/chat')}
+                                        >
+                                            Trò chuyện với DABS Bot
+                                        </Button>
+                                    </div>
+                                    <div className="header__content__top__wrapper__account">
+                                        {user ? (
+                                            <Dropdown overlay={accountMenu} placement="bottomRight" trigger={['click']}>
+                                                <Button type="primary" icon={<UserOutlined />}>
+                                                    {user.fullname?.trim() || user.email}
+                                                </Button>
+                                            </Dropdown>
+                                        ) : (
+                                            <Button onClick={() => navigate('/login')} type="primary">
+                                                <UserOutlined /> Đăng nhập
+                                            </Button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
                         </div>
 
                     </div>
@@ -145,10 +189,15 @@ function LayoutCommon() {
                         mode="horizontal"
                         overflowedIndicator={<MenuOutlined />}
                     >
-                        <Menu.Item key="support">
-                            <a href="/">Hỗ trợ đặt khám</a>
+                        <Menu.Item key="homepage" onClick={() => navigate('/')}>
+                            Trang chủ
+                        </Menu.Item>
+                        {/* Support */}
+                        <Menu.Item key="support" onClick={() => navigate('/about-us')}>
+                            Giới thiệu
                         </Menu.Item>
 
+                        {/* Cơ sở y tế (HospitalList, HospitalDetail) */}
                         <SubMenu
                             key="medical-facilities"
                             title={
@@ -157,11 +206,14 @@ function LayoutCommon() {
                                 </span>
                             }
                         >
-                            <Menu.Item key="facility-1">Cơ sở 1</Menu.Item>
-                            <Menu.Item key="facility-2">Cơ sở 2</Menu.Item>
+                            <Menu.Item key="hospital-list" onClick={() => navigate('/hospital-list')}>
+                                Danh sách cơ sở
+                            </Menu.Item>
+                            {/* Có thể thêm cơ sở cụ thể (không có route cố định) */}
                         </SubMenu>
 
-                        <SubMenu
+                        {/* Dịch vụ y tế (AppointmentService, AppointmentSchedule, AppointmentDoctor, AppointmentSpecialty) */}
+                        {/* <SubMenu
                             key="medical-services"
                             title={
                                 <span>
@@ -169,18 +221,30 @@ function LayoutCommon() {
                                 </span>
                             }
                         >
-                            <Menu.Item key="service-1">Dịch vụ 1</Menu.Item>
-                            <Menu.Item key="service-2">Dịch vụ 2</Menu.Item>
-                        </SubMenu>
+                            <Menu.Item key="appointment-service" onClick={() => navigate('/appointment')}>
+                                Dịch vụ khám bệnh
+                            </Menu.Item>
+                            <Menu.Item key="appointment-schedule" onClick={() => navigate('/appointment/schedule')}>
+                                Lịch khám
+                            </Menu.Item>
+                            <Menu.Item key="appointment-doctor" onClick={() => navigate('/appointment/doctor')}>
+                                Bác sĩ
+                            </Menu.Item>
+                            <Menu.Item key="appointment-specialty" onClick={() => navigate('/appointment/specialty')}>
+                                Chuyên khoa
+                            </Menu.Item>
+                        </SubMenu> */}
 
-                        <Menu.Item key="patient-records" onClick={() => navigate('/health-records')}>
+                        {/* Hồ sơ bệnh nhân (PatientRecords) */}
+                        <Menu.Item key="patient-records" onClick={() => navigate('/profile')}>
                             Hồ sơ bệnh nhân
                         </Menu.Item>
 
-                        <Menu.Item key="enterprise-health">
-                            <a href="/">Khám sức khoẻ doanh nghiệp</a>
-                        </Menu.Item>
+                        {/* <Menu.Item key="enterprise-health" onClick={() => window.open('/', '_blank')}>
+                            Khám sức khoẻ doanh nghiệp
+                        </Menu.Item> */}
 
+                        {/* Tin tức (nếu có trang tin tức, tạm giữ submenu) */}
                         <SubMenu
                             key="news"
                             title={
@@ -189,10 +253,11 @@ function LayoutCommon() {
                                 </span>
                             }
                         >
-                            <Menu.Item key="news-1">Tin 1</Menu.Item>
-                            <Menu.Item key="news-2">Tin 2</Menu.Item>
+                            <Menu.Item key="news-1" onClick={() => window.open('/', '_blank')}>Tin 1</Menu.Item>
+                            <Menu.Item key="news-2" onClick={() => window.open('/', '_blank')}>Tin 2</Menu.Item>
                         </SubMenu>
 
+                        {/* Hướng dẫn (UserGuide) */}
                         <SubMenu
                             key="guide"
                             title={
@@ -201,8 +266,10 @@ function LayoutCommon() {
                                 </span>
                             }
                         >
-                            <Menu.Item key="guide-1">Hướng dẫn 1</Menu.Item>
-                            <Menu.Item key="guide-2">Hướng dẫn 2</Menu.Item>
+                            <Menu.Item key="user-guide" onClick={() => navigate('/user-guide')}>
+                                Hướng dẫn sử dụng
+                            </Menu.Item>
+                            {/* Nếu có thêm các hướng dẫn chi tiết khác */}
                         </SubMenu>
 
                         <SubMenu
@@ -213,13 +280,14 @@ function LayoutCommon() {
                                 </span>
                             }
                         >
-                            <Menu.Item key="contact-1">Liên hệ 1</Menu.Item>
-                            <Menu.Item key="contact-2">Liên hệ 2</Menu.Item>
+                            <Menu.Item key="contact-1" onClick={() => window.open('/', '_blank')}>Liên hệ 1</Menu.Item>
+                            <Menu.Item key="contact-2" onClick={() => window.open('/', '_blank')}>Liên hệ 2</Menu.Item>
                         </SubMenu>
                     </Menu>
                 </div>
             </div>
-            <main style={{ background: "#fff" }}>
+
+            <main style={{ backgroundColor: "#e0f7fa", }}>
 
                 <div className="layout-default-main">
                     <Outlet />
@@ -249,7 +317,7 @@ function LayoutCommon() {
                     </div>
                 </div>
             </Footer>
-        </Layout>
+        </Layout >
     </>
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Input, Avatar, Badge, Tooltip, message } from 'antd';
+import { Button, Input, Avatar, Badge, Tooltip, message, Space } from 'antd';
 import {
     SendOutlined,
     CloseOutlined,
@@ -17,7 +17,8 @@ import {
     sendMessage as sendChatMessage,
     sendFirstMessage,
     extractTextFromResponse,
-    generateSessionId
+    generateSessionId,
+    extractMixedContentFromResponse
 } from '../../services/chatbotService';
 
 const ChatBot = () => {
@@ -70,7 +71,8 @@ const ChatBot = () => {
             const sessionResult = await createChatBotSession(newSessionId, userId, accessToken);
 
             console.log('✅ Session created:', sessionResult);
-            setSessionId(newSessionId);
+            // setSessionId(newSessionId);
+            setSessionId(sessionResult);
             setIsFirstMessage(true);
 
             message.success('Đã kết nối với trợ lý AI!');
@@ -121,69 +123,247 @@ const ChatBot = () => {
 
 
     // ✅ Simplified sendMessage in ChatBot component
-    const sendMessage = async () => {
-        if (!input.trim() || isLoading || !sessionId || !accessToken) {
-            if (!accessToken) {
-                message.error('Vui lòng đăng nhập để sử dụng trợ lý AI');
+const sendMessage = async () => {
+    if (!input.trim() || isLoading || !sessionId || !accessToken) {
+        if (!accessToken) {
+            message.error('Vui lòng đăng nhập để sử dụng trợ lý AI');
+        }
+        return;
+    }
+
+    const userMessage = input.trim();
+    setInput('');
+    setIsLoading(true);
+
+    const userMessageObj = {
+        type: 'user',
+        content: userMessage,
+        time: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessageObj]);
+
+    try {
+        console.log('🔄 Sending message to ADK agent...');
+
+        const response = await sendChatMessage(sessionId, userId, userMessage);
+        console.log('✅ Raw response from API:', response);
+
+        // ✅ Try both parsing methods
+        let parsedResponse = extractTextFromResponse(response);
+        
+        if (!parsedResponse || parsedResponse.length === 0) {
+            console.log('🔄 Trying mixed content parser...');
+            parsedResponse = extractMixedContentFromResponse(response);
+        }
+        
+        console.log('📋 Final parsed response:', parsedResponse);
+
+        if (parsedResponse && parsedResponse.length > 0) {
+            parsedResponse.forEach((messageData, index) => {
+                console.log(`📨 Processing message ${index + 1}:`, messageData);
+                
+                if (messageData.type === 'choice') {
+                    // ✅ Add choice message with buttons
+                    const choiceMessageObj = {
+                        type: 'bot',
+                        content: messageData.text,
+                        choices: messageData.choices,
+                        time: new Date()
+                    };
+                    console.log('🎯 Adding choice message:', choiceMessageObj);
+                    setMessages(prev => [...prev, choiceMessageObj]);
+                } else if (messageData.type === 'text' && messageData.content.trim()) {
+                    // ✅ Add regular text message (skip empty ones)
+                    const textMessageObj = {
+                        type: 'bot',
+                        content: messageData.content,
+                        time: new Date()
+                    };
+                    console.log('📝 Adding text message:', textMessageObj);
+                    setMessages(prev => [...prev, textMessageObj]);
+                }
+            });
+        } else {
+            // ✅ Fallback - try to extract plain text
+            console.log('⚠️ Parsing failed, trying plain text extraction...');
+            const plainText = response
+                .map(event => event.content?.parts?.map(part => part.text).join(' '))
+                .filter(Boolean)
+                .join(' ');
+                
+            if (plainText.trim()) {
+                const fallbackMessageObj = {
+                    type: 'bot',
+                    content: plainText,
+                    time: new Date()
+                };
+                setMessages(prev => [...prev, fallbackMessageObj]);
+            } else {
+                const errorMessageObj = {
+                    type: 'bot',
+                    content: 'Tôi đã nhận được tin nhắn của bạn nhưng không thể tạo phản hồi phù hợp.',
+                    time: new Date()
+                };
+                setMessages(prev => [...prev, errorMessageObj]);
             }
-            return;
         }
 
-        const userMessage = input.trim();
-        setInput('');
-        setIsLoading(true);
+        if (!isOpen) {
+            setUnreadCount(prev => prev + 1);
+        }
 
-        // Thêm tin nhắn của người dùng ngay lập tức
-        const userMessageObj = {
-            type: 'user',
-            content: userMessage,
+    } catch (error) {
+        console.error('❌ Error sending message:', error);
+
+        const errorMessageObj = {
+            type: 'bot',
+            content: 'Xin lỗi, có lỗi xảy ra khi kết nối với trợ lý AI. Vui lòng thử lại sau.',
             time: new Date()
         };
 
-        setMessages(prev => [...prev, userMessageObj]);
+        setMessages(prev => [...prev, errorMessageObj]);
+        message.error('Lỗi kết nối API. Vui lòng thử lại.');
+    } finally {
+        setIsLoading(false);
+    }
+};
 
-        try {
-            console.log('🔄 Sending message to ADK agent...');
+const handleChoiceClick = async (choice) => {
+    console.log('🎯 Choice clicked:', choice);
 
-            // ✅ Simplified - no need for user profile or first message logic
-            const response = await sendChatMessage(sessionId, userId, userMessage);
-
-            console.log('✅ Raw response from API:', response);
-
-            // ✅ Extract text from response using helper function
-            const botResponseText = extractTextFromResponse(response);
-
-            console.log('✅ Bot response text:', botResponseText);
-
-            // ✅ Add bot response to messages
-            const botMessageObj = {
-                type: 'bot',
-                content: botResponseText || 'Tôi đã nhận được tin nhắn của bạn nhưng không thể tạo phản hồi phù hợp.',
-                time: new Date()
-            };
-
-            setMessages(prev => [...prev, botMessageObj]);
-
-            // Update unread count if chat is closed
-            if (!isOpen) {
-                setUnreadCount(prev => prev + 1);
-            }
-
-        } catch (error) {
-            console.error('❌ Error sending message:', error);
-
-            const errorMessageObj = {
-                type: 'bot',
-                content: 'Xin lỗi, có lỗi xảy ra khi kết nối với trợ lý AI. Vui lòng thử lại sau.',
-                time: new Date()
-            };
-
-            setMessages(prev => [...prev, errorMessageObj]);
-            message.error('Lỗi kết nối API. Vui lòng thử lại.');
-        } finally {
-            setIsLoading(false);
-        }
+    const userChoiceObj = {
+        type: 'user',
+        content: choice.label,
+        time: new Date()
     };
+    setMessages(prev => [...prev, userChoiceObj]);
+
+    setIsLoading(true);
+    try {
+        console.log('🔄 Sending choice value to API:', choice.value);
+        
+        const response = await sendChatMessage(sessionId, userId, choice.value);
+        console.log('✅ Choice response from API:', response);
+        
+        // ✅ Use same parsing logic
+        let parsedResponse = extractTextFromResponse(response);
+        
+        if (!parsedResponse || parsedResponse.length === 0) {
+            parsedResponse = extractMixedContentFromResponse(response);
+        }
+        
+        console.log('📋 Parsed choice response:', parsedResponse);
+
+        if (parsedResponse && parsedResponse.length > 0) {
+            parsedResponse.forEach((messageData, index) => {
+                console.log(`📨 Processing choice response ${index + 1}:`, messageData);
+                
+                if (messageData.type === 'choice') {
+                    const choiceMessageObj = {
+                        type: 'bot',
+                        content: messageData.text,
+                        choices: messageData.choices,
+                        time: new Date()
+                    };
+                    setMessages(prev => [...prev, choiceMessageObj]);
+                } else if (messageData.type === 'text' && messageData.content.trim()) {
+                    const textMessageObj = {
+                        type: 'bot',
+                        content: messageData.content,
+                        time: new Date()
+                    };
+                    setMessages(prev => [...prev, textMessageObj]);
+                }
+            });
+        } else {
+            // ✅ Fallback for choice responses
+            const plainText = response
+                .map(event => event.content?.parts?.map(part => part.text).join(' '))
+                .filter(Boolean)
+                .join(' ');
+                
+            const fallbackMessageObj = {
+                type: 'bot',
+                content: plainText || 'Cảm ơn bạn đã chọn. Tôi đang xử lý yêu cầu của bạn.',
+                time: new Date()
+            };
+            setMessages(prev => [...prev, fallbackMessageObj]);
+        }
+    } catch (error) {
+        console.error('❌ Error sending choice:', error);
+        const errorMessageObj = {
+            type: 'bot',
+            content: 'Xin lỗi, có lỗi xảy ra khi xử lý lựa chọn của bạn.',
+            time: new Date()
+        };
+        setMessages(prev => [...prev, errorMessageObj]);
+    } finally {
+        setIsLoading(false);
+    }
+};
+    const renderMessage = (message, index) => (
+    <div
+        key={index}
+        className={`message ${message.type === 'user' ? 'user-message' : 'bot-message'}`}
+    >
+        {message.type === 'bot' && (
+            <Avatar
+                icon={<RobotOutlined />}
+                className="message-avatar"
+                size="default"
+            />
+        )}
+
+        <div className="message-content">
+            <div className="message-bubble">
+                {/* ✅ Always show the message content */}
+                <div className="message-text">
+                    {message.content}
+                </div>
+
+                {/* ✅ Render choice buttons if available */}
+                {message.choices && message.choices.length > 0 && (
+                    <div className="choice-buttons" style={{ marginTop: 12 }}>
+                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                            {message.choices.map((choice, choiceIndex) => (
+                                <Button
+                                    key={choiceIndex}
+                                    type="default"
+                                    onClick={() => handleChoiceClick(choice)}
+                                    style={{
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        height: 'auto',
+                                        padding: '8px 12px',
+                                        whiteSpace: 'normal',
+                                        wordWrap: 'break-word',
+                                        border: '1px solid #d9d9d9',
+                                        borderRadius: '6px'
+                                    }}
+                                    disabled={isLoading}
+                                >
+                                     {choice.label}
+                                </Button>
+                            ))}
+                        </Space>
+                    </div>
+                )}
+            </div>
+            <div className="message-time">
+                {formatTime(message.time)}
+            </div>
+        </div>
+
+        {message.type === 'user' && (
+            <Avatar
+                icon={<UserOutlined />}
+                className="message-avatar"
+                size="default"
+            />
+        )}
+    </div>
+);
 
     // ✅ Function to start new chat session
     const startNewSession = async () => {
@@ -307,37 +487,7 @@ Hãy cho tôi biết bạn cần hỗ trợ gì hôm nay!`,
                     </div>
 
                     <div className="chat-messages">
-                        {messages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`message ${message.type === 'user' ? 'user-message' : 'bot-message'}`}
-                            >
-                                {message.type === 'bot' && (
-                                    <Avatar
-                                        icon={<RobotOutlined />}
-                                        className="message-avatar"
-                                        size="small"
-                                    />
-                                )}
-
-                                <div className="message-content">
-                                    <div className="message-bubble">
-                                        {message.content}
-                                    </div>
-                                    <div className="message-time">
-                                        {formatTime(message.time)}
-                                    </div>
-                                </div>
-
-                                {message.type === 'user' && (
-                                    <Avatar
-                                        icon={<UserOutlined />}
-                                        className="message-avatar"
-                                        size="small"
-                                    />
-                                )}
-                            </div>
-                        ))}
+                        {messages.map((message, index) => renderMessage(message, index))}
 
                         {/* Loading indicator */}
                         {(isLoading || isInitializing) && (
@@ -345,7 +495,7 @@ Hãy cho tôi biết bạn cần hỗ trợ gì hôm nay!`,
                                 <Avatar
                                     icon={<RobotOutlined />}
                                     className="message-avatar"
-                                    size="small"
+                                    size="default"
                                 />
                                 <div className="message-content">
                                     <div className="message-bubble loading">

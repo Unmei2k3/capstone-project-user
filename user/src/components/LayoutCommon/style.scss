@@ -81,26 +81,27 @@
                     padding: 5px 10px;
                     cursor: pointer;
 
-                    button {
-                        border-radius: 30px;
-                        border: 1px solid #00b5f1;
-                        min-width: 16px;
+                    .ant-btn {
+                        border-radius: 20px;
+                        background: linear-gradient(83.63deg, #00b5f1 33.34%, #00e0ff 113.91%);
+                        border-color: #00e0ff;
                         height: 40px;
-                        width: 140px;
-                        overflow: hidden;
                         display: flex;
                         align-items: center;
-                        justify-content: flex-start;
-                        gap: 10px;
-                        font-weight: 500;
-                        font-size: 16px;
-                        line-height: 16px;
-                        color: #00b5f1;
-                        background: white;
+                        max-width: 225px;
+                        overflow: hidden;
+                        white-space: nowrap;
+                        text-overflow: ellipsis;
+                        width: 100%;
 
-                        .ant-btn-primary:hover {
-                            background: linear-gradient(83.63deg, #00b5f1 33.34%, #00e0ff 113.91%);
-                            border-color: #00e0ff;
+                        &:hover {
+                            opacity: 0.9;
+                        }
+
+                        .anticon {
+                            margin-right: 6px;
+                            font-size: 16px;
+                            flex-shrink: 0;
                         }
                     }
                 }
@@ -286,49 +287,49 @@ main {
 }
 
 @media (max-width: 990px) {
-  .header__content__top {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 10px 20px;
+    .header__content__top {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px 20px;
 
-    &__network {
-      display: none;
-    }
-
-    &__wrapper {
-      width: 100%;
-      display: flex;
-      flex-wrap: wrap;  
-      justify-content: flex-end;
-      gap: 10px;          
-
-      &__chat-button {
-        flex: 1 1 100%;  
-        margin-bottom: 8px;
-
-        .ant-btn {
-          width: 80%; 
-          height: 40px;
-          font-size: 14px;
-          white-space: normal; 
+        &__network {
+            display: none;
         }
-      }
 
-      &__account {
-        flex: 1 1 auto;  
-        min-width: 140px; 
-        display: flex;
-        justify-content: flex-end;
+        &__wrapper {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
 
-        button {
-          width: 140px; 
-          font-size: 14px;
-          height: 40px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+            &__chat-button {
+                flex: 1 1 100%;
+                margin-bottom: 8px;
+
+                .ant-btn {
+                    width: 80%;
+                    height: 40px;
+                    font-size: 14px;
+                    white-space: normal;
+                }
+            }
+
+            &__account {
+                flex: 1 1 auto;
+                min-width: 140px;
+                display: flex;
+                justify-content: flex-end;
+
+                button {
+                    width: 140px;
+                    font-size: 14px;
+                    height: 40px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+            }
         }
-      }
     }
-  }
 }
