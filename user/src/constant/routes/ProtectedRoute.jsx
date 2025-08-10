@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setMessage } from '../../redux/slices/messageSlice';
 import { useEffect, useState } from 'react';
 
-const ProtectedRoute = ({ allowedRoles }) => {
+const ProtectedRoute = ({ allowedRoles, children }) => {
     const dispatch = useDispatch();
     const { accessToken, isInitializing, user } = useSelector((state) => state.user);
     const [redirectToLogin, setRedirectToLogin] = useState(false);
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
         return <div></div>; 
     }
 
-    return <Outlet />;
+    return children;
 };
 
 export default ProtectedRoute;
