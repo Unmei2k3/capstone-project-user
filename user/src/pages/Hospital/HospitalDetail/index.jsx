@@ -4,7 +4,7 @@ import imgErrorHospital from "../../../assets/images/errorImgHospital.jpg";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { getDoctorByHospitalId } from '../../../services/doctorService';
-import { getHospitalDetail } from '../../../services/hospitalService';
+import { getHospitalDetail, getHospitalWorkDate } from '../../../services/hospitalService';
 
 const { Title, Text } = Typography;
 
@@ -13,7 +13,29 @@ function HospitalDetail() {
     const [doctors, setDoctors] = useState([]);
     const [hospital, setHospital] = useState(null);
     const [loadingHospital, setLoadingHospital] = useState(true);
+    const [workDate, setWorkDate] = useState([]);
     const navigate = useNavigate();
+
+    const formatTime = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':');
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    };
+
+    const sortedWorkingDates = (workDate?.workingDates || []).slice().sort((a, b) => {
+
+        const dayA = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+        const dayB = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+        return dayA - dayB;
+    });
+
+    useEffect(() => {
+        (async () => {
+            const result = await getHospitalWorkDate(105);
+            setWorkDate(result);
+        })();
+    }, [hospitalId]);
+
+    console.log("work date is " + JSON.stringify(workDate));
 
     useEffect(() => {
         (async () => {
@@ -47,7 +69,6 @@ function HospitalDetail() {
                 {hospital ? (
                     <>
                         <Row gutter={[32, 32]} justify="space-between">
-                            {/* Thông tin bệnh viện và dịch vụ */}
                             <Col xs={24} md={16}>
                                 <Card
                                     style={{
@@ -99,9 +120,41 @@ function HospitalDetail() {
                                 </Card>
 
                                 <Card
-                                    title={<Title level={4} style={{ margin: 0, userSelect: 'none' }}>Bảng giá dịch vụ</Title>}
+                                    title={<Title level={4} style={{ marginBottom: 16, userSelect: 'none' }}>Lịch làm việc</Title>}
+                                    style={{ borderRadius: 16, boxShadow: '0 4px 15px rgba(0,0,0,0.1)', marginBottom: 32 }}
+                                    bodyStyle={{ padding: 16, maxHeight: 300, overflowY: 'auto' }}
+                                    bordered={false}
+                                >
+                                    {workDate?.workingDates?.length > 0 ? (
+                                        <List
+                                            dataSource={sortedWorkingDates}
+                                            renderItem={(item) => (
+                                                <List.Item>
+                                                    <List.Item.Meta
+                                                        title={<Text strong>{item.dayOfWeekName}</Text>}
+                                                        description={
+                                                            item.isClosed ? (
+                                                                <Text type="danger">Đóng cửa</Text>
+                                                            ) : (
+                                                                <Text>
+                                                                    {formatTime(item.startTime)} - {formatTime(item.endTime)}
+                                                                </Text>
+                                                            )
+                                                        }
+                                                    />
+                                                    {!item.isClosed && <CheckCircleFilled style={{ color: '#52c41a' }} />}
+                                                </List.Item>
+                                            )}
+                                        />
+                                    ) : (
+                                        <Text>Chưa có lịch làm việc</Text>
+                                    )}
+                                </Card>
+
+                                <Card
+                                    title={<Title level={4} style={{ marginBottom: 16, userSelect: 'none' }}>Bảng giá dịch vụ</Title>}
                                     style={{ borderRadius: 16, boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
-                                    bodyStyle={{ padding: 16 }}
+                                    bodyStyle={{ padding: 16, maxHeight: 300, overflowY: 'auto' }}
                                     bordered={false}
                                     size="middle"
                                 >
@@ -109,12 +162,14 @@ function HospitalDetail() {
                                         columns={columns}
                                         dataSource={hospital.services?.map((s) => ({ ...s, key: s.id })) || []}
                                         pagination={false}
-                                        scroll={{ y: 240 }}
+                                        scroll={{ y: 280 }}
                                         rowKey="key"
                                         style={{ userSelect: 'none' }}
                                         locale={{ emptyText: 'Chưa có dịch vụ' }}
                                     />
                                 </Card>
+
+
                             </Col>
 
                             <Col xs={24} md={7}>
@@ -130,7 +185,7 @@ function HospitalDetail() {
                                             renderItem={(item) => (
                                                 <List.Item
                                                     style={{ padding: '8px 0', cursor: 'pointer' }}
-                                                    onClick={() => navigate(`/doctor-detail/${item.id}`)} 
+                                                    onClick={() => navigate(`/doctor-detail/${item.id}`)}
                                                 >
                                                     <List.Item.Meta
                                                         avatar={<Avatar src={item.user.avatarUrl || imgErrorHospital} size="large" />}

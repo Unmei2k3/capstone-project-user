@@ -117,13 +117,8 @@ function UpadteProfile() {
 
   useEffect(() => {
     getProvinces()
-      .then(data => {
-        console.log("Dữ liệu từ API getProvinces:", data.data);
-        setProvinces(data.data);
-      })
-      .catch(err => {
-        console.error("Error fetching provinces:", err);
-      });
+      .then((data) => setProvinces(data.data))
+      .catch((err) => console.error("Error fetching provinces:", err));
   }, []);
 
   useEffect(() => {
@@ -138,6 +133,24 @@ function UpadteProfile() {
       setWards([]);
     }
   }, [selectedProvince, provinces]);
+
+  useEffect(() => {
+    if (userDefault && provinces.length > 0) {
+      form.setFieldsValue({
+        fullname: userDefault.fullname ?? undefined,
+        phoneNumber: userDefault.phoneNumber ?? undefined,
+        email: userDefault.email ?? undefined,
+        gender:
+          userDefault.gender !== undefined ? String(userDefault.gender) : undefined,
+        dob: userDefault.dob ? dayjs(userDefault.dob, "YYYY-MM-DD") : null,
+        province: userDefault.province ?? undefined,
+        ward: userDefault.ward ?? undefined,
+        streetAddress: userDefault.streetAddress ?? undefined,
+        cccd: userDefault.cccd ?? undefined,
+      });
+      setSelectedProvince(userDefault.province ?? null);
+    }
+  }, [userDefault, provinces, form]);
 
   const isInitializing = useSelector((state) => state.user.isInitializing);
 
@@ -206,8 +219,8 @@ function UpadteProfile() {
             <ConfigProvider locale={viVN}>
               <Form style={{ width: "100%", maxWidth: 800, margin: "0 auto" }}
                 form={form}
-                name="createUserProfile" 
-                onFinish={handleFinish} 
+                name="createUserProfile"
+                onFinish={handleFinish}
                 layout="vertical"
                 initialValues={{
                   fullname: userDefault?.fullname?.trim() || "",
@@ -284,7 +297,7 @@ function UpadteProfile() {
                       ]}
                     >
                       <Input
-                        prefix={<MailOutlined />} placeholder="Nhập email" size="large" />
+                        prefix={<MailOutlined />} placeholder="Nhập email" size="large" disabled/>
                     </Form.Item>
                   </Col>
                 </Row>
@@ -302,8 +315,8 @@ function UpadteProfile() {
                         placeholder="Chọn giới tính ..."
                         size="large"
                       >
-                        <Option value="true">Male</Option>
-                        <Option value="false">Female</Option>
+                        <Option value="true">Nam</Option>
+                        <Option value="false">Nữ</Option>
                       </Select>
                     </Form.Item>
                   </Col>

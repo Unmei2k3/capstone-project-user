@@ -52,7 +52,6 @@ function ChangePassword() {
         style={{
           backgroundColor: "#E8F2F7",
           borderRadius: "8px",
-          minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -145,7 +144,7 @@ function ChangePassword() {
           <Row gutter={16} justify="center">
             <Col span={4}>
               <Form.Item>
-                <Button type="primary" htmlType="submit" size="large">
+                <Button type="primary" htmlType="submit" size="large" style={{marginBottom: 50}}> 
                   Cập nhật
                 </Button>
               </Form.Item>

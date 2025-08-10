@@ -37,8 +37,8 @@ import UserBookingFlow from "../../pages/Appointment/Flow/index.jsx";
 import AppointmentReviewPage from "../../pages/Appointment/Accept/index.jsx";
 import PaymentCancelled from "../../pages/Payment/PaymentCancelled.jsx";
 import PaymentSuccess from "../../pages/Payment/PaymentSuccess.jsx";
-
-
+import UserGuide from "../../pages/Guide/index.jsx";
+import ProjectIntroPatient from "../../pages/Introduction/index.jsx";
 
 export const routes = [
   //public
@@ -49,6 +49,16 @@ export const routes = [
       {
         index: true,
         element: <Home /> // đã vẽ report 3
+      },
+      {
+        path: '/about-us',
+        element: <ProjectIntroPatient />
+
+      },
+      {
+        path: '/user-guide',
+        element: <UserGuide />
+
       },
       {
         path: '/payment/success',
@@ -69,7 +79,13 @@ export const routes = [
 
       {
         path: "profile",
-        element: <UpadteProfile /> // đã vẽ report 3
+        element: <ProtectedRoute allowedRoles={['Patient']} />,
+        children: [
+          {
+            index: true,
+            element: <UpadteProfile /> // đã vẽ report 3
+          }
+        ]
       },
       {
         path: "doctor-detail/:doctorId",
@@ -85,13 +101,9 @@ export const routes = [
       },
       {
         path: "booking-history",
-        element: <ProtectedRoute allowedRoles={['Patient']} />,
-        children: [
-          {
-            path: "",
-            element: <BookingHistoryPage /> // đã vẽ report 3
-          }
-        ]
+
+        element: <BookingHistoryPage /> // đã vẽ report 3
+
       },
       {
         path: "account",
@@ -130,28 +142,14 @@ export const routes = [
 
       {
         path: "change-password",
-        element: <ChangePassword />
+        element: <ChangePassword /> // đã vẽ
       },
 
       {
         path: "*",
         element: <Navigate to="/" />
       },
-      {
-        path: "account",
-        element: <ProtectedRoute allowedRoles={['Patient']} />,
-        children: [
-          {
-            path: "",
-            element: <UserAccount />,
-          },
-          {
-            path: "change-password",
-            element: <ChangePassword /> // đã vẽ report 3
-          },
-        ],
-      },
-
+  
       {
         path: "hospital-detail/:hospitalId",
         element: (
@@ -198,7 +196,11 @@ export const routes = [
   },
   {
     path: "/appointment",
-    element: <LayoutCommon />,
+    element: (
+      <ProtectedRoute allowedRoles={['Patient']}>
+        <LayoutCommon />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -206,13 +208,10 @@ export const routes = [
       },
       {
         path: "booking",
-        element: <ProtectedRoute allowedRoles={['Patient']} />,
-        children: [
-          {
-            index: true,
-            element: <UserBookingFlow />,
-          },
-        ],
+
+        index: true,
+        element: <UserBookingFlow />,
+
       },
       {
         path: "schedule",

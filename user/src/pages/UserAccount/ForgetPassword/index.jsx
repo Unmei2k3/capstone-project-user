@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
-import { Form, Input, Button, Typography, Card, Space, message } from "antd";
-import { UserOutlined, LockOutlined, HomeOutlined,MailOutlined } from "@ant-design/icons";
+import React, { useEffect, useState } from "react";
+import { Form, Input, Button, Typography, Card, message } from "antd";
+import { HomeOutlined, MailOutlined } from "@ant-design/icons";
 import logo from "../../../assets/images/dabs-logo.png"
 import { Link, useNavigate } from 'react-router-dom';
 import { forgotPassword } from "../../../services/userService";
@@ -12,32 +12,37 @@ function ForgetPassword() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [messageApi, contextHolder] = message.useMessage();
-    const messageState = useSelector((state) => state.message)
+    const messageState = useSelector((state) => state.message);
+
+    // Thêm state loading
+    const [loading, setLoading] = useState(false);
+
     useEffect(() => {
         if (messageState) {
             messageApi.open({
                 type: messageState.type,
                 content: messageState.content,
-
             });
             dispatch(clearMessage());
         }
     }, [messageState, dispatch]);
+
     const onFinish = async (values) => {
-         const payload = {
-                   emailAddress: values.email,
-                };
-                const messageText = await forgotPassword(payload);
-                if (messageText === "Vui lòng kiểm tra email để đặt lại mật khẩu!") {
-                    dispatch(setMessage({ type: 'success', content: messageText }));
-                    setTimeout(() => {
-                         navigate('/auth/reset-password/verify-email-notice');
-                    }, 1000);
-        
-                }  else {
-                    dispatch(setMessage({ type: 'error', content: messageText }));
-                }
-                console.log("Received values: ", payload);
+        setLoading(true); // Bắt đầu loading
+        const payload = {
+            emailAddress: values.email,
+        };
+        const messageText = await forgotPassword(payload);
+        if (messageText === "Vui lòng kiểm tra email để đặt lại mật khẩu!") {
+            dispatch(setMessage({ type: 'success', content: messageText }));
+            setTimeout(() => {
+                navigate('/auth/reset-password/verify-email-notice');
+            }, 1000);
+        } else {
+            dispatch(setMessage({ type: 'error', content: messageText }));
+        }
+        setLoading(false); // Kết thúc loading
+        console.log("Received values: ", payload);
     };
 
     return (
@@ -62,7 +67,7 @@ function ForgetPassword() {
                     <div style={{ color: "#888" }}>Nhập email để lấy lại mật khẩu</div>
                 </div>
                 <Form name="forget-password" onFinish={onFinish} layout="vertical">
-                      <Form.Item
+                    <Form.Item
                         name="email"
                         label={<span>Địa chỉ Email</span>}
                         rules={[
@@ -79,6 +84,7 @@ function ForgetPassword() {
                             block
                             size="large"
                             style={{ borderRadius: 6, background: "#1890ff" }}
+                            loading={loading}  // Disable và hiển thị loading khi true
                         >
                             Gửi yêu cầu đặt lại mật khẩu
                         </Button>
@@ -96,9 +102,7 @@ function ForgetPassword() {
                             type: 'success',
                             content: 'This is a success message',
                         });
-                    }
-
-                    }
+                    }}
                     icon={<HomeOutlined />}
                     style={{ marginTop: 24, color: "#1890ff", paddingLeft: 0 }}
                     block
@@ -107,7 +111,6 @@ function ForgetPassword() {
                 </Button>
             </Card>
         </>
-
     );
 }
 

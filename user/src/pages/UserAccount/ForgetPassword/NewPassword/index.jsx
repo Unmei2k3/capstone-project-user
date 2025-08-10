@@ -1,37 +1,43 @@
-
-import React, { useEffect, useState } from "react";
-import { Form, Input, Button, Typography, Card, Space, message } from "antd";
-import { UserOutlined, LockOutlined, HomeOutlined } from "@ant-design/icons";
-
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react"; // thêm useState
+import { Form, Input, Button, Typography, Card, message } from "antd";
+import { HomeOutlined } from "@ant-design/icons";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { resetPassword } from "../../../../services/authService";
 import { useDispatch, useSelector } from "react-redux";
 import { clearMessage, setMessage } from "../../../../redux/slices/messageSlice";
 import logo from "../../../../assets/images/dabs-logo.png";
 const { Title } = Typography;
+
 function NewPassword() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const location = useLocation();
     const { token, email } = location.state || {};
     const [messageApi, contextHolder] = message.useMessage();
-    const messageState = useSelector((state) => state.message)
+    const messageState = useSelector((state) => state.message);
+
+    // Thêm loading state
+    const [loading, setLoading] = useState(false);
+
     useEffect(() => {
         if (messageState) {
             messageApi.open({
                 type: messageState.type,
                 content: messageState.content,
-
             });
             dispatch(clearMessage());
         }
     }, [messageState, dispatch]);
+
     const onFinish = async (values) => {
         if (!token || !email) {
             navigate('/login');
             return;
         }
+
+        setLoading(true); // Bắt đầu loading
+
         const payload = {
             email: email,
             resetToken: token,
@@ -51,6 +57,8 @@ function NewPassword() {
             }
         } catch (error) {
             dispatch(setMessage({ type: 'error', content: "Có lỗi xảy ra vui lòng thử lại sau!" }));
+        } finally {
+            setLoading(false); // Kết thúc loading
         }
     };
 
@@ -117,6 +125,7 @@ function NewPassword() {
                             block
                             size="large"
                             style={{ borderRadius: 6, background: "#1890ff" }}
+                            loading={loading} // Disable và hiển thị loading khi true
                         >
                             Đặt lại mật khẩu
                         </Button>
@@ -130,9 +139,7 @@ function NewPassword() {
                             type: 'success',
                             content: 'This is a success message',
                         });
-                    }
-
-                    }
+                    }}
                     icon={<HomeOutlined />}
                     style={{ marginTop: 24, color: "#1890ff", paddingLeft: 0 }}
                     block
@@ -141,7 +148,6 @@ function NewPassword() {
                 </Button>
             </Card>
         </>
-
     );
 }
 

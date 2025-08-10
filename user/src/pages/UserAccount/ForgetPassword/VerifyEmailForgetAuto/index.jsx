@@ -64,7 +64,7 @@ const VerifyEmailForgetAuto = () => {
       <Result
         status="success"
         title={message}
-        subTitle="Vui lòng chờ, bạn sẽ được chuyển tới trang đăng nhập."
+        subTitle="Vui lòng chờ, bạn sẽ được chuyển tới trang cập nhật lại mật khẩu."
       />
     );
   }

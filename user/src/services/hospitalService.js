@@ -28,3 +28,16 @@ export const getHospitalDetail = async (id) => {
     throw error;
   }
 };
+
+export const getHospitalWorkDate = async (id) => {
+  try {
+    const result = await get(`/hospitals/${id}/working-date`);
+    if (!result || !result.result) {
+      throw new Error('Hospital workdate is missing in the response.');
+    }
+    return result.result;
+  } catch (error) {
+    console.error(`Error fetching hospital workdate with ID ${id}:`, error.message);
+    throw error;
+  }
+};

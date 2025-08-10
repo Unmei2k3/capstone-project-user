@@ -1,328 +1,594 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import {
-    Layout,
-    Typography,
+    Card,
     Table,
     Tag,
     Button,
-    Card,
-    DatePicker,
     Space,
-    Breadcrumb,
-    Empty
+    Typography,
+    Row,
+    Col,
+    Input,
+    Select,
+    DatePicker,
+    message,
+    Spin,
+    Empty,
+    Tooltip
 } from 'antd';
 import {
-    FileTextOutlined,
     CalendarOutlined,
-    HomeOutlined,
-    ClockCircleOutlined,
     SearchOutlined,
-    ReloadOutlined,
-    EyeOutlined
+    EyeOutlined,
+    CloseCircleOutlined,
+    FileTextOutlined,
+    ReloadOutlined
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
-import moment from 'moment';
+import { getAppointmentByUserId, cancelAppointment } from '../../services/appointmentService';
 import BookingDetailDrawer from './BookingDetailDrawer';
-import { useSelector } from 'react-redux';
-import './BookingHistory.scss';
+import dayjs from 'dayjs';
 
-const { Title } = Typography;
-const { Content } = Layout;
+const { Title, Text } = Typography;
+const { Option } = Select;
 const { RangePicker } = DatePicker;
 
-const BookingHistoryPage = () => {
-    const [loading, setLoading] = useState(true);
-    const [bookings, setBookings] = useState([]);
-    const [filteredBookings, setFilteredBookings] = useState([]);
+const BookingHistory = () => {
+    // ✅ Get user from Redux store
+    const user = useSelector((state) => state.user?.user);
+
+    // ✅ States
+    const [appointments, setAppointments] = useState([]);
+    const [filteredAppointments, setFilteredAppointments] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [searchText, setSearchText] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState(null);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 10,
-        total: 0,
-    });
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [drawerVisible, setDrawerVisible] = useState(false);
-    const { user } = useSelector((state) => state.user);
+    const [cancellingId, setCancellingId] = useState(null);
 
-    // Fetch bookings on initial load
-    useEffect(() => {
-        fetchBookings();
-    }, []);
-
-    // Apply filters when dateRange changes
-    useEffect(() => {
-        filterBookings();
-    }, [dateRange, bookings]);
-
-    const fetchBookings = () => {
-        setLoading(true);
-
-        // Mock data - in a real app, this would be an API call
-        setTimeout(() => {
-            const mockBookings = generateMockBookings(30);
-            setBookings(mockBookings);
-            setFilteredBookings(mockBookings);
-            setPagination(prev => ({ ...prev, total: mockBookings.length }));
-            setLoading(false);
-        }, 1000);
+    // ✅ Get current user ID from Redux store
+    const getCurrentUserId = () => {
+        console.log('👤 Getting user from Redux store:', user);
+        return user?.id || user?.userId;
     };
 
-    const filterBookings = () => {
-        let result = [...bookings];
+    // ✅ Fetch appointments from backend
+    const fetchAppointments = async () => {
+        console.log('📞 Starting fetchAppointments...');
+        setLoading(true);
+        try {
+            const userId = getCurrentUserId();
+            if (!userId) {
+                message.warning('Vui lòng đăng nhập để xem lịch hẹn');
+                console.error('❌ No user ID found, cannot fetch appointments');
+                setLoading(false);
+                return;
+            }
 
-        if (dateRange && dateRange[0] && dateRange[1]) {
-            result = result.filter(booking => {
-                const bookingDate = moment(booking.bookingDate, 'DD/MM/YYYY');
-                return bookingDate.isBetween(dateRange[0], dateRange[1], 'day', '[]');
+            console.log('📅 Fetching appointments for user:', userId);
+            const response = await getAppointmentByUserId(userId);
+            console.log('📦 Raw API response:', response);
+
+
+            // Handle response structure
+            const appointmentsData = response.result || response.data || response || [];
+            console.log('✅ Appointments fetched:', appointmentsData.length);
+
+            if (appointmentsData.length === 0) {
+                console.log('📭 No appointments found');
+                message.info('Bạn chưa có lịch hẹn nào');
+                setAppointments([]);
+                setFilteredAppointments([]);
+                return;
+            }
+
+            // Transform backend data to frontend format
+            const transformedAppointments = appointmentsData.map((appointment, index) => {
+                // Debug first few appointments to understand structure
+                if (index < 3) {
+                    console.log(`🔍 Appointment ${index + 1} structure:`, appointment);
+                    console.log(`🔍 Keys:`, Object.keys(appointment));
+                }
+
+                return {
+                    id: appointment.id,
+                    bookingId: `BK${String(appointment.id).padStart(6, '0')}`,
+                    bookingDate: appointment.appointmentTime
+                        ? dayjs(appointment.appointmentTime).format('DD/MM/YYYY')
+                        : 'Chưa xác định',
+                    appointmentTime: appointment.appointmentTime
+                        ? dayjs(appointment.appointmentTime).format('HH:mm')
+                        : 'Chưa xác định',
+                    appointmentDate: appointment.appointmentTime,
+                    status: mapBackendStatus(appointment.status),
+
+                    // Patient information (using current user data)
+                    patientName: user?.name || user?.fullName || 'Chưa có thông tin',
+                    patientPhone: user?.phone || 'Chưa có thông tin',
+                    patientEmail: user?.email || 'Chưa có thông tin',
+
+                    // Hospital information from doctorSchedule.hospital
+                    hospital: appointment.doctorSchedule?.hospital?.name || 'Chưa có thông tin',
+                    hospitalAddress: appointment.doctorSchedule?.hospital?.address || '',
+                    hospitalImage: appointment.doctorSchedule?.hospital?.image || '',
+
+                    // Department/Service information
+                    department: appointment.serviceName || 'Chưa có thông tin',
+                    serviceName: appointment.serviceName || 'Chưa có thông tin',
+
+                    // Doctor information from doctorSchedule.doctorProfile
+                    doctor: appointment.doctorSchedule?.doctorProfile?.description ||
+                        appointment.doctorSchedule?.doctorProfile?.user?.name ||
+                        'Chưa có thông tin',
+                    doctorDescription: appointment.doctorSchedule?.doctorProfile?.description || '',
+
+                    // Room information
+                    room: appointment.doctorSchedule?.room?.name ||
+                        appointment.doctorSchedule?.room?.roomCode ||
+                        'Chưa có thông tin',
+                    roomCode: appointment.doctorSchedule?.room?.roomCode || '',
+
+                    // Schedule information
+                    workDate: appointment.doctorSchedule?.workDate
+                        ? dayjs(appointment.doctorSchedule.workDate).format('DD/MM/YYYY')
+                        : '',
+                    startTime: appointment.doctorSchedule?.startTime || '',
+                    endTime: appointment.doctorSchedule?.endTime || '',
+
+                    // Additional info
+                    symptoms: appointment.note || 'Không có mô tả',
+                    notes: appointment.note || '',
+                    fee: appointment.servicePrice || 0,
+                    appointmentNumber: appointment.appointmentNumber || 0,
+
+                    // Keep original data for debugging
+                    originalData: appointment
+                };
+            });
+
+            console.log('🔄 Transformed appointments sample:', transformedAppointments.slice(0, 2));
+            console.log('🔄 Status distribution:', transformedAppointments.reduce((acc, app) => {
+                acc[app.status] = (acc[app.status] || 0) + 1;
+                return acc;
+            }, {}));
+            setAppointments(transformedAppointments);
+            setFilteredAppointments(transformedAppointments);
+
+            message.success(`Đã tải ${transformedAppointments.length} lịch hẹn`);
+
+        } catch (error) {
+            console.error('❌ Error fetching appointments:', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+
+            message.error(`Không thể tải danh sách lịch hẹn: ${error.message}`);
+
+            // Reset to empty state on error
+            setAppointments([]);
+            setFilteredAppointments([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ✅ Map backend status to frontend status
+    const mapBackendStatus = (backendStatus) => {
+        console.log('🔍 Mapping status:', backendStatus, 'Type:', typeof backendStatus);
+
+        // Handle null, undefined, or empty values
+        if (!backendStatus && backendStatus !== 0) {
+            console.log('⚠️ Empty status, defaulting to pending');
+            return 'pending';
+        }
+
+        // Convert to string for consistent handling
+        const statusValue = String(backendStatus);
+
+        // Handle numeric statuses (corrected mapping)
+        const numericStatusMap = {
+            '1': 'pending',      // Chờ xác nhận
+            '2': 'confirmed',    // Đã xác nhận  
+            '3': 'cancelled',    // Đã hủy
+            '4': 'completed'     // Hoàn thành
+        };
+
+        // Handle string statuses (fallback)
+        const stringStatusMap = {
+            'PENDING': 'pending',
+            'CONFIRMED': 'confirmed',
+            'COMPLETED': 'completed',
+            'CANCELLED': 'cancelled',
+            'SCHEDULED': 'confirmed',
+            'FINISHED': 'completed',
+            'CANCELED': 'cancelled'
+        };
+
+        let mappedStatus;
+
+        // Try numeric mapping first
+        if (numericStatusMap[statusValue]) {
+            mappedStatus = numericStatusMap[statusValue];
+            console.log(`✅ Numeric mapping: ${backendStatus} → ${mappedStatus}`);
+        } else {
+            // Try string mapping
+            mappedStatus = stringStatusMap[statusValue.toUpperCase()] || statusValue.toLowerCase();
+            console.log(`✅ String mapping: ${backendStatus} → ${mappedStatus}`);
+        }
+
+        return mappedStatus;
+    };    // ✅ Load appointments on component mount
+    useEffect(() => {
+        console.log('🔥 useEffect triggered - fetching appointments');
+        console.log('👤 Current user from Redux:', user);
+        fetchAppointments();
+    }, []);
+
+    // ✅ Filter appointments based on search criteria
+    useEffect(() => {
+        let filtered = [...appointments];
+
+        // Filter by search text
+        if (searchText.trim()) {
+            filtered = filtered.filter(appointment =>
+                appointment.bookingId?.toLowerCase().includes(searchText.toLowerCase()) ||
+                appointment.doctor?.toLowerCase().includes(searchText.toLowerCase()) ||
+                appointment.hospital?.toLowerCase().includes(searchText.toLowerCase()) ||
+                appointment.serviceName?.toLowerCase().includes(searchText.toLowerCase()) ||
+                appointment.department?.toLowerCase().includes(searchText.toLowerCase()) ||
+                appointment.room?.toLowerCase().includes(searchText.toLowerCase())
+            );
+        }
+
+        // Filter by status
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(appointment => appointment.status === statusFilter);
+        }
+
+        // Filter by date range
+        if (dateRange && dateRange.length === 2) {
+            const [startDate, endDate] = dateRange;
+            filtered = filtered.filter(appointment => {
+                const appointmentDate = dayjs(appointment.bookingDate, 'DD/MM/YYYY');
+                return appointmentDate.isBetween(startDate, endDate, 'day', '[]');
             });
         }
 
-        setFilteredBookings(result);
-        setPagination(prev => ({
-            ...prev,
-            current: 1,
-            total: result.length
-        }));
-    };
+        setFilteredAppointments(filtered);
+    }, [appointments, searchText, statusFilter, dateRange]);
 
-    const handleViewDetails = (record) => {
-        setSelectedBooking(record);
+    // ✅ Handle view detail
+    const handleViewDetail = (appointment) => {
+        console.log('👀 Viewing appointment detail:', appointment);
+        setSelectedBooking(appointment);
         setDrawerVisible(true);
     };
 
-    const handleTableChange = (pagination) => {
-        setPagination(pagination);
+    // ✅ Handle cancel appointment
+    const handleCancelBooking = async (appointmentId) => {
+        setCancellingId(appointmentId);
+        try {
+            console.log('❌ Cancelling appointment:', appointmentId);
+            await cancelAppointment(appointmentId);
+
+            message.success('Hủy lịch hẹn thành công');
+
+            // Update local state
+            setAppointments(prev =>
+                prev.map(appointment =>
+                    appointment.id === appointmentId
+                        ? { ...appointment, status: 'cancelled' }
+                        : appointment
+                )
+            );
+
+        } catch (error) {
+            console.error('❌ Error cancelling appointment:', error);
+            const errorMessage = error.response?.data?.message ||
+                error.message ||
+                'Không thể hủy lịch hẹn';
+            message.error(errorMessage);
+        } finally {
+            setCancellingId(null);
+        }
     };
 
-    const resetFilters = () => {
-        setDateRange(null);
-        setFilteredBookings(bookings);
-        setPagination(prev => ({
-            ...prev,
-            current: 1,
-            total: bookings.length
-        }));
+    // ✅ Get status info for display
+    const getStatusInfo = (status) => {
+        const statusMap = {
+            'completed': { color: 'green', text: 'Hoàn thành' },
+            'confirmed': { color: 'blue', text: 'Đã xác nhận' },
+            'pending': { color: 'orange', text: 'Chờ xác nhận' },
+            'cancelled': { color: 'red', text: 'Đã hủy' }
+        };
+        return statusMap[status] || { color: 'default', text: status };
     };
 
+    // ✅ Table columns
     const columns = [
         {
             title: 'Mã đặt khám',
             dataIndex: 'bookingId',
             key: 'bookingId',
-            render: (text) => <span className="booking-id">{text}</span>,
+            width: 120,
+            render: (text) => <Text strong>{text}</Text>
         },
         {
-            title: 'Ngày đặt',
+            title: 'Ngày khám',
             dataIndex: 'bookingDate',
             key: 'bookingDate',
-            render: (text) => (
-                <span>
-                    <CalendarOutlined style={{ marginRight: 8 }} />
-                    {text}
-                </span>
-            ),
+            width: 120,
+            render: (date, record) => (
+                <div>
+                    <div><CalendarOutlined /> {date}</div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {record.appointmentTime}
+                    </Text>
+                </div>
+            )
         },
         {
-            title: 'Thời gian khám',
-            dataIndex: 'appointmentTime',
-            key: 'appointmentTime',
-            render: (text) => (
-                <span>
-                    <ClockCircleOutlined style={{ marginRight: 8 }} />
-                    {text}
-                </span>
-            ),
-        },
-        {
-            title: 'Cơ sở y tế',
+            title: 'Bệnh viện',
             dataIndex: 'hospital',
             key: 'hospital',
-            ellipsis: true,
+            ellipsis: {
+                showTitle: false,
+            },
+            render: (text) => (
+                <Tooltip placement="topLeft" title={text || 'Chưa có thông tin'}>
+                    {text || 'Chưa có thông tin'}
+                </Tooltip>
+            )
         },
         {
-            title: 'Chuyên khoa',
-            dataIndex: 'department',
-            key: 'department',
-            responsive: ['md'],
+            title: 'Dịch vụ/Chuyên khoa',
+            dataIndex: 'serviceName',
+            key: 'serviceName',
+            width: 180,
+            ellipsis: {
+                showTitle: false,
+            },
+            render: (text) => (
+                <Tooltip placement="topLeft" title={text || 'Chưa có thông tin'}>
+                    {text || 'Chưa có thông tin'}
+                </Tooltip>
+            )
+        },
+        {
+            title: 'Bác sĩ',
+            dataIndex: 'doctor',
+            key: 'doctor',
+            width: 150,
+            ellipsis: {
+                showTitle: false,
+            },
+            render: (text, record) => (
+                <div>
+                    <Tooltip placement="topLeft" title={text || 'Chưa có thông tin'}>
+                        <div>{text || 'Chưa có thông tin'}</div>
+                    </Tooltip>
+                    {record.room && (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                            Phòng: {record.room}
+                        </Text>
+                    )}
+                </div>
+            )
         },
         {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
+            width: 120,
             render: (status) => {
-                let color = '';
-                let text = '';
-                switch (status) {
-                    case 'completed':
-                        color = 'green';
-                        text = 'Hoàn thành';
-                        break;
-                    case 'confirmed':
-                        color = 'blue';
-                        text = 'Đã xác nhận';
-                        break;
-                    case 'pending':
-                        color = 'orange';
-                        text = 'Chờ xác nhận';
-                        break;
-                    case 'cancelled':
-                        color = 'red';
-                        text = 'Đã hủy';
-                        break;
-                    default:
-                        color = 'default';
-                        text = status;
-                }
-                return <Tag color={color}>{text}</Tag>;
-            },
+                const statusInfo = getStatusInfo(status);
+                return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+            }
+        },
+        {
+            title: 'Phí khám',
+            dataIndex: 'fee',
+            key: 'fee',
+            width: 120,
+            render: (fee) => (
+                <Text strong style={{ color: '#1890ff' }}>
+                    {fee?.toLocaleString() || 0} VNĐ
+                </Text>
+            )
         },
         {
             title: 'Thao tác',
-            key: 'action',
+            key: 'actions',
+            width: 150,
             render: (_, record) => (
-                <Button
-                    type="primary"
-                    icon={<EyeOutlined />}
-                    onClick={() => handleViewDetails(record)}
-                >
-                    Chi tiết
-                </Button>
-            ),
-        },
+                <Space size="small">
+                    <Tooltip title="Xem chi tiết">
+                        <Button
+                            type="primary"
+                            ghost
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewDetail(record)}
+                        />
+                    </Tooltip>
+
+                    {record.status === 'pending' && (
+                        <Tooltip title="Hủy lịch hẹn">
+                            <Button
+                                danger
+                                size="small"
+                                icon={<CloseCircleOutlined />}
+                                loading={cancellingId === record.id}
+                                onClick={() => handleCancelBooking(record.id)}
+                            />
+                        </Tooltip>
+                    )}
+
+                    {record.status === 'completed' && (
+                        <Tooltip title="Xem phiếu khám">
+                            <Button
+                                type="default"
+                                size="small"
+                                icon={<FileTextOutlined />}
+                                onClick={() => message.info('Tính năng đang phát triển')}
+                            />
+                        </Tooltip>
+                    )}
+                </Space>
+            )
+        }
     ];
 
-    // Generate mock data function
-    const generateMockBookings = (count) => {
-        const statuses = ['completed', 'confirmed', 'pending', 'cancelled'];
-        const hospitals = [
-            'Bệnh viện Đa khoa DABS',
-            'Phòng khám Đa khoa Sài Gòn',
-            'Bệnh viện FPT',
-            'Bệnh viện Đại học Y Dược'
-        ];
-        const departments = [
-            'Nội tổng hợp',
-            'Ngoại tổng hợp',
-            'Tim mạch',
-            'Sản phụ khoa',
-            'Nhi khoa',
-            'Da liễu'
-        ];
-        const doctors = [
-            'BS. Nguyễn Văn A',
-            'BS. Trần Thị B',
-            'BS. Lê Văn C',
-            'BS. Phan Thị D'
-        ];
-
-        const result = [];
-
-        for (let i = 1; i <= count; i++) {
-            // Generate a random date within the last 6 months
-            const randomDate = moment()
-                .subtract(Math.floor(Math.random() * 180), 'days')
-                .format('DD/MM/YYYY');
-
-            // Generate random time
-            const hours = Math.floor(Math.random() * 9) + 8; // 8AM to 5PM
-            const minutes = Math.random() > 0.5 ? '00' : '30';
-            const appointmentTime = `${hours}:${minutes}`;
-
-            // Generate booking
-            result.push({
-                id: i,
-                bookingId: `BK${String(i).padStart(5, '0')}`,
-                bookingDate: randomDate,
-                appointmentTime: appointmentTime,
-                hospital: hospitals[Math.floor(Math.random() * hospitals.length)],
-                department: departments[Math.floor(Math.random() * departments.length)],
-                doctor: doctors[Math.floor(Math.random() * doctors.length)],
-                status: statuses[Math.floor(Math.random() * statuses.length)],
-                patientName: user?.fullname || 'Trần Thành Đạt',
-                patientPhone: user?.phoneNumber || '097****969',
-                patientEmail: user?.email || 'example@gmail.com',
-                symptoms: 'Sốt, đau đầu, mệt mỏi',
-                notes: Math.random() > 0.5 ? 'Có tiền sử bệnh tim' : '',
-                fee: Math.floor(Math.random() * 5 + 1) * 100000
-            });
-        }
-
-        // Sort by date (newest first)
-        return result.sort((a, b) => {
-            return moment(b.bookingDate, 'DD/MM/YYYY').diff(moment(a.bookingDate, 'DD/MM/YYYY'));
-        });
-    };
-
     return (
-        <Content className="booking-history-container">
-            {/* Breadcrumb */}
-            <Breadcrumb className="booking-breadcrumb">
-                <Breadcrumb.Item>
-                    <Link to="/"><HomeOutlined /> Trang chủ</Link>
-                </Breadcrumb.Item>
-                <Breadcrumb.Item>
-                    <FileTextOutlined /> Lịch sử đặt khám
-                </Breadcrumb.Item>
-            </Breadcrumb>
+        <div style={{ padding: '24px' }}>
+            <Card>
+                {/* Header */}
+                <Row align="middle" style={{ marginBottom: 24 }}>
+                    <Col flex="auto">
+                        <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+                            <CalendarOutlined style={{ marginRight: 12 }} />
+                            Lịch sử đặt khám
+                        </Title>
+                        <Text type="secondary">
+                            Quản lý và theo dõi các lịch hẹn khám bệnh của bạn
+                        </Text>
+                    </Col>
+                    <Col>
+                        <Button
+                            type="primary"
+                            icon={<ReloadOutlined />}
+                            loading={loading}
+                            onClick={fetchAppointments}
+                        >
+                            Làm mới
+                        </Button>
+                    </Col>
+                </Row>
 
-            <Title level={2} className="page-title">
-                <CalendarOutlined /> Lịch sử đặt khám
-            </Title>
+                {/* Filters */}
+                <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Col xs={24} md={8}>
+                        <Input
+                            placeholder="Tìm theo mã đặt khám, bác sĩ, bệnh viện..."
+                            prefix={<SearchOutlined />}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            allowClear
+                        />
+                    </Col>
 
-            {/* Filters */}
-            <Card className="filter-card">
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    <div>
-                        <Title level={5}>Lọc theo ngày đặt khám:</Title>
-                        <Space>
-                            <RangePicker
-                                format="DD/MM/YYYY"
-                                value={dateRange}
-                                onChange={setDateRange}
-                                allowClear
-                                placeholder={['Từ ngày', 'Đến ngày']}
-                            />
-                            <Button
-                                type="primary"
-                                icon={<SearchOutlined />}
-                                onClick={filterBookings}
-                            >
-                                Tìm kiếm
-                            </Button>
-                            <Button
-                                icon={<ReloadOutlined />}
-                                onClick={resetFilters}
-                            >
-                                Đặt lại
-                            </Button>
-                        </Space>
-                    </div>
-                </Space>
-            </Card>
+                    <Col xs={24} md={6}>
+                        <Select
+                            placeholder="Trạng thái"
+                            style={{ width: '100%' }}
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                        >
+                            <Option value="all">Tất cả</Option>
+                            <Option value="pending">Chờ xác nhận</Option>
+                            <Option value="confirmed">Đã xác nhận</Option>
+                            <Option value="completed">Hoàn thành</Option>
+                            <Option value="cancelled">Đã hủy</Option>
+                        </Select>
+                    </Col>
 
-            {/* Booking Table */}
-            <Card className="booking-table-card">
-                <Table
-                    columns={columns}
-                    dataSource={filteredBookings}
-                    rowKey="id"
-                    pagination={pagination}
-                    onChange={handleTableChange}
-                    loading={loading}
-                    locale={{
-                        emptyText: <Empty description="Không tìm thấy lịch đặt khám nào" />
+                    <Col xs={24} md={10}>
+                        <RangePicker
+                            style={{ width: '100%' }}
+                            placeholder={['Từ ngày', 'Đến ngày']}
+                            format="DD/MM/YYYY"
+                            value={dateRange}
+                            onChange={setDateRange}
+                        />
+                    </Col>
+                </Row>
+
+                {/* Statistics */}
+                <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Col xs={12} md={6}>
+                        <Card size="small" style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#1890ff', fontSize: '20px', fontWeight: 'bold' }}>
+                                {appointments.length}
+                            </div>
+                            <div style={{ color: '#8c8c8c', fontSize: '12px' }}>
+                                Tổng lịch hẹn
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Card size="small" style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#52c41a', fontSize: '20px', fontWeight: 'bold' }}>
+                                {appointments.filter(a => a.status === 'completed').length}
+                            </div>
+                            <div style={{ color: '#8c8c8c', fontSize: '12px' }}>
+                                Đã hoàn thành
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Card size="small" style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#faad14', fontSize: '20px', fontWeight: 'bold' }}>
+                                {appointments.filter(a => a.status === 'pending').length}
+                            </div>
+                            <div style={{ color: '#8c8c8c', fontSize: '12px' }}>
+                                Chờ xác nhận
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Card size="small" style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#ff4d4f', fontSize: '20px', fontWeight: 'bold' }}>
+                                {appointments.filter(a => a.status === 'cancelled').length}
+                            </div>
+                            <div style={{ color: '#8c8c8c', fontSize: '12px' }}>
+                                Đã hủy
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Table */}
+                <Spin spinning={loading}>
+                    <Table
+                        columns={columns}
+                        dataSource={filteredAppointments}
+                        rowKey="id"
+                        pagination={{
+                            total: filteredAppointments.length,
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                                `${range[0]}-${range[1]} của ${total} lịch hẹn`,
+                        }}
+                        locale={{
+                            emptyText: (
+                                <Empty
+                                    description="Chưa có lịch hẹn nào"
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                />
+                            )
+                        }}
+                        scroll={{ x: 800 }}
+                    />
+                </Spin>
+
+                {/* Detail Drawer */}
+                <BookingDetailDrawer
+                    booking={selectedBooking}
+                    visible={drawerVisible}
+                    onClose={() => {
+                        setDrawerVisible(false);
+                        setSelectedBooking(null);
                     }}
                 />
             </Card>
-
-            {/* Detail Drawer */}
-            <BookingDetailDrawer
-                booking={selectedBooking}
-                visible={drawerVisible}
-                onClose={() => setDrawerVisible(false)}
-            />
-        </Content>
+        </div>
     );
 };
 
-export default BookingHistoryPage;
+export default BookingHistory;

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Typography, Card, Space, Row, Col, message } from "antd";
 import { UserOutlined, LockOutlined, HomeOutlined, MailOutlined } from "@ant-design/icons";
 import logo from "../../../assets/images/dabs-logo.png"
@@ -8,59 +8,81 @@ import { registerUser } from "../../../services/userService";
 import { useDispatch, useSelector } from "react-redux";
 import { clearMessage, setMessage } from "../../../redux/slices/messageSlice";
 const { Title } = Typography;
+
 function Register() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [messageApi, contextHolder] = message.useMessage();
-    const messageState = useSelector((state) => state.message)
+    const messageState = useSelector((state) => state.message);
+
+    const [isLoading, setIsLoading] = useState(false);
+
     useEffect(() => {
         if (messageState) {
             messageApi.open({
                 type: messageState.type,
                 content: messageState.content,
-
             });
             dispatch(clearMessage());
         }
     }, [messageState, dispatch]);
+
     const onFinish = async (values) => {
+        // Hiển thị thông báo loading
+        messageApi.open({
+            key: 'registerLoading',
+            type: 'loading',
+            content: 'Vui lòng chờ, quá trình đang được thực thi...',
+            duration: 0,  // không tự động tắt
+        });
+        setIsLoading(true);
+
         const payload = {
             username: values.email,
             email: values.email,
             fullName: values.fullName,
             password: values.password,
         };
-        const messageText = await registerUser(payload);
-        if (messageText === "Đăng ký thành công!") {
-            dispatch(setMessage({ type: 'success', content: messageText }));
-            setTimeout(() => {
-                 navigate('/auth/verify-email-notice');
-            }, 800);
 
-        }  else {
-            dispatch(setMessage({ type: 'error', content: messageText }));
+        try {
+            const messageText = await registerUser(payload);
+            if (messageText === "Đăng ký thành công!") {
+                dispatch(setMessage({ type: 'success', content: messageText }));
+          
+                setTimeout(() => {
+                    navigate('/auth/verify-email-notice');
+                }, 800);
+            } else {
+                dispatch(setMessage({ type: 'error', content: messageText }));
+              
+                messageApi.open({
+                    key: 'registerLoading',
+                    type: 'error',
+                    content: messageText,
+                    duration: 2,
+                });
+            }
+        } catch (error) {
+            dispatch(setMessage({ type: 'error', content: "Có lỗi xảy ra, vui lòng thử lại!" }));
+            messageApi.open({
+                key: 'registerLoading',
+                type: 'error',
+                content: "Có lỗi xảy ra, vui lòng thử lại!",
+                duration: 2,
+            });
+        } finally {
+            setIsLoading(false);
         }
-        console.log("Received values: ", payload);
     };
+
+
     return (
         <>
-        {contextHolder}
-            <Card
-                style={{
-                    width: 500,
-                    minHeight: 550,
-                    borderRadius: 16,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-                    marginRight: 0,
-                    zIndex: 2,
-                    background: "rgba(255,255,255,0.97)",
-                }}
-            >
+            {contextHolder}
+            <Card style={{ width: 500, minHeight: 550, borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", marginRight: 0, zIndex: 2, background: "rgba(255,255,255,0.97)" }}>
                 <div style={{ textAlign: "center", marginBottom: 24 }}>
                     <img src={logo} alt="logo" style={{ width: 100, marginBottom: -20, marginTop: -40 }} />
-                    <Title level={2} style={{ color: "#1890ff", margin: 0 }}>
-                        Đăng ký DABS
-                    </Title>
+                    <Title level={2} style={{ color: "#1890ff", margin: 0 }}>Đăng ký DABS</Title>
                     <div style={{ color: "#888" }}>Tạo tài khoản mới cho hệ thống bệnh viện</div>
                 </div>
                 <Form name="register" onFinish={onFinish} layout="vertical">
@@ -148,6 +170,8 @@ function Register() {
                             block
                             size="large"
                             style={{ borderRadius: 6, background: "#1890ff" }}
+                            loading={isLoading}
+                            disabled={isLoading}
                         >
                             Đăng ký
                         </Button>
@@ -155,7 +179,6 @@ function Register() {
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <Link to="/login/forget-password" style={{ color: "#1890ff" }}>Quên mật khẩu?</Link>
                         <Link to="/login" style={{ color: "#1890ff" }}>Đã có tài khoản? Đăng nhập</Link>
-
                     </div>
                 </Form>
                 <Button
@@ -169,7 +192,7 @@ function Register() {
                 </Button>
             </Card>
         </>
-    )
+    );
 }
 
 export default Register;

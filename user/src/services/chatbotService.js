@@ -156,6 +156,169 @@ export const testChatbot = async () => {
 export const extractTextFromResponse = (response) => {
     if (!Array.isArray(response)) return null;
 
+    const messages = [];
+    
+    response.forEach(event => {
+        if (event.content && event.content.parts) {
+            event.content.parts.forEach(part => {
+                if (part.text) {
+                    console.log('🔍 Processing part.text:', part.text);
+                    
+                    // ✅ First, check if the text contains JSON markers
+                    if (part.text.includes('```json') || part.text.includes('{')) {
+                        // ✅ Extract JSON from markdown code blocks or plain JSON
+                        let jsonString = part.text;
+                        
+                        // Remove markdown code block markers if present
+                        if (part.text.includes('```json')) {
+                            const jsonMatch = part.text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+                            if (jsonMatch) {
+                                jsonString = jsonMatch[1];
+                            }
+                        } else if (part.text.includes('```')) {
+                            // Handle generic code blocks
+                            const codeMatch = part.text.match(/```\s*(\{[\s\S]*?\})\s*```/);
+                            if (codeMatch) {
+                                jsonString = codeMatch[1];
+                            }
+                        } else {
+                            // Try to extract JSON object from text
+                            const jsonMatch = part.text.match(/(\{[\s\S]*\})/);
+                            if (jsonMatch) {
+                                jsonString = jsonMatch[1];
+                            }
+                        }
+                        
+                        console.log('🔍 Extracted JSON string:', jsonString);
+                        
+                        try {
+                            const parsed = JSON.parse(jsonString.trim());
+                            console.log('✅ Parsed JSON:', parsed);
+                            
+                            // ✅ Check if it has choice array (button format)
+                            if (parsed.choice && Array.isArray(parsed.choice)) {
+                                console.log('📋 Found choice buttons:', parsed.choice);
+                                console.log('📝 Choice text:', parsed.text);
+                                
+                                messages.push({
+                                    type: 'choice',
+                                    text: parsed.text || 'Vui lòng chọn một tùy chọn:',
+                                    choices: parsed.choice
+                                });
+                            } else if (parsed.text) {
+                                // ✅ JSON with text field but no choices
+                                messages.push({
+                                    type: 'text',
+                                    content: parsed.text
+                                });
+                            } else {
+                                // ✅ JSON but unknown format - stringify it
+                                messages.push({
+                                    type: 'text',
+                                    content: JSON.stringify(parsed, null, 2)
+                                });
+                            }
+                        } catch (jsonError) {
+                            console.log('❌ JSON parse error:', jsonError);
+                            // ✅ If JSON parsing fails, treat as regular text
+                            messages.push({
+                                type: 'text',
+                                content: part.text
+                            });
+                        }
+                    } else {
+                        // ✅ Regular text without JSON
+                        console.log('📝 Plain text message:', part.text);
+                        messages.push({
+                            type: 'text',
+                            content: part.text
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    console.log('🎯 Final extracted messages:', messages);
+    return messages;
+}
+
+export const extractMixedContentFromResponse = (response) => {
+    if (!Array.isArray(response)) return null;
+
+    const messages = [];
+    
+    response.forEach(event => {
+        if (event.content && event.content.parts) {
+            event.content.parts.forEach(part => {
+                if (part.text) {
+                    const text = part.text.trim();
+                    console.log('🔍 Processing mixed content:', text);
+                    
+                    // ✅ Split content by potential JSON blocks
+                    const parts = text.split(/(```(?:json)?\s*\{[\s\S]*?\}\s*```|\{[\s\S]*?\})/);
+                    
+                    parts.forEach(partContent => {
+                        if (!partContent.trim()) return;
+                        
+                        if (partContent.includes('{') && partContent.includes('}')) {
+                            // ✅ This might be JSON
+                            let jsonString = partContent;
+                            
+                            // Clean up markdown markers
+                            if (partContent.includes('```')) {
+                                const cleanMatch = partContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+                                if (cleanMatch) {
+                                    jsonString = cleanMatch[1];
+                                }
+                            }
+                            
+                            try {
+                                const parsed = JSON.parse(jsonString.trim());
+                                
+                                if (parsed.choice && Array.isArray(parsed.choice)) {
+                                    messages.push({
+                                        type: 'choice',
+                                        text: parsed.text || 'Vui lòng chọn một tùy chọn:',
+                                        choices: parsed.choice
+                                    });
+                                } else if (parsed.text) {
+                                    messages.push({
+                                        type: 'text',
+                                        content: parsed.text
+                                    });
+                                } else {
+                                    messages.push({
+                                        type: 'text',
+                                        content: JSON.stringify(parsed, null, 2)
+                                    });
+                                }
+                            } catch (error) {
+                                // ✅ Not valid JSON, treat as text
+                                messages.push({
+                                    type: 'text',
+                                    content: partContent.trim()
+                                });
+                            }
+                        } else {
+                            // ✅ Regular text
+                            messages.push({
+                                type: 'text',
+                                content: partContent.trim()
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    return messages;
+}
+
+export const extractPlainTextFromResponse = (response) => {
+    if (!Array.isArray(response)) return null;
+
     const textMessages = [];
     response.forEach(event => {
         if (event.content && event.content.parts) {
@@ -168,6 +331,11 @@ export const extractTextFromResponse = (response) => {
     });
 
     return textMessages.join(' ');
+}
+
+export const hasChoices = (parsedResponse) => {
+    return Array.isArray(parsedResponse) && 
+           parsedResponse.some(msg => msg.type === 'choice');
 }
 
 // Helper function to extract usage metadata
@@ -183,16 +351,15 @@ export const generateSessionId = () => {
     return `hospital-booking-${Date.now()}`;
 }
 
-testChatbot()
-    .then(results => {
-        console.log('Test successful!');
+export const getTextMessages = (parsedResponse) => {
+    if (!Array.isArray(parsedResponse)) return [];
+    return parsedResponse
+        .filter(msg => msg.type === 'text')
+        .map(msg => msg.content)
+        .join('\n');
+}
 
-        // Extract readable text from first message
-        const firstMessageText = extractTextFromResponse(results.firstMessageResult);
-        console.log('Bot response text:', firstMessageText);
-
-        // Extract usage metadata
-        const usage = extractUsageMetadata(results.firstMessageResult);
-        console.log('Usage metadata:', usage);
-    })
-    .catch(error => console.error('Test failed:', error));
+export const getChoiceMessages = (parsedResponse) => {
+    if (!Array.isArray(parsedResponse)) return [];
+    return parsedResponse.filter(msg => msg.type === 'choice');
+}
