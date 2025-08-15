@@ -189,7 +189,7 @@ function AppointmentSpecialty({ onNext, defaultValue, infomationValue, onBack })
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", padding: "0 16px", marginTop: 24 }}>
                             <Button
-                                onClick={() => window.history.back()}
+                                onClick={onBack}
                                 style={{
                                     borderRadius: 6,
                                     border: "1px solid #ccc",

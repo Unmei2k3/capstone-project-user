@@ -22,7 +22,9 @@ import {
     CalendarOutlined,
     DollarOutlined,
     ClockCircleOutlined,
-    UserOutlined
+    UserOutlined,
+    CloseCircleOutlined,
+    ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -30,6 +32,9 @@ import './PaymentSuccess.scss';
 import { getPaymentByOrderId } from '../../services/paymentService';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+
+// ✅ Set Vietnamese locale
+dayjs.locale('vi');
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -40,64 +45,109 @@ const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-
     const orderId = searchParams.get('orderId') || searchParams.get('orderCode');
     const status = searchParams.get('status');
     const cancel = searchParams.get('cancel');
 
+    // ✅ Vietnamese date formatting
     const formatDateTime = (dateString) => {
-        if (!dateString) return new Date().toLocaleString();
+        if (!dateString) return dayjs().format('HH:mm:ss DD/MM/YYYY');
 
         try {
             const date = dayjs(dateString);
-
-            return date.format('HH:mm:ss DD/M/YYYY');
+            return date.format('HH:mm:ss DD/MM/YYYY');
         } catch (error) {
-            console.error('Error formatting date:', error);
-            return new Date().toLocaleString();
+            console.error('❌ Lỗi định dạng ngày:', error);
+            return dayjs().format('HH:mm:ss DD/MM/YYYY');
         }
     };
 
     const formatTime = (dateString) => {
-        if (!dateString) return new Date().toLocaleTimeString();
+        if (!dateString) return dayjs().format('HH:mm:ss');
 
         try {
             const date = dayjs(dateString);
             return date.format('HH:mm:ss');
         } catch (error) {
-            console.error('Error formatting time:', error);
-            return new Date().toLocaleTimeString();
+            console.error('❌ Lỗi định dạng giờ:', error);
+            return dayjs().format('HH:mm:ss');
         }
+    };
+
+    // ✅ Vietnamese amount formatting
+    const formatAmount = (amount) => {
+        if (!amount && amount !== 0) return '0';
+        return new Intl.NumberFormat('vi-VN').format(amount);
+    };
+
+    // ✅ Payment status mapping
+    const getPaymentStatusInfo = (status) => {
+        const statusMap = {
+            'PAID': {
+                color: 'success',
+                icon: <CheckCircleOutlined />,
+                text: 'ĐÃ THANH TOÁN',
+                description: 'Thanh toán thành công'
+            },
+            'PENDING': {
+                color: 'processing',
+                icon: <ClockCircleOutlined />,
+                text: 'ĐANG XỬ LÝ',
+                description: 'Đang chờ thanh toán'
+            },
+            'CANCELLED': {
+                color: 'error',
+                icon: <CloseCircleOutlined />,
+                text: 'ĐÃ HỦY',
+                description: 'Giao dịch đã bị hủy'
+            },
+            'FAILED': {
+                color: 'error',
+                icon: <ExclamationCircleOutlined />,
+                text: 'THẤT BẠI',
+                description: 'Thanh toán thất bại'
+            }
+        };
+
+        return statusMap[status] || {
+            color: 'default',
+            icon: <ExclamationCircleOutlined />,
+            text: status || 'KHÔNG XÁC ĐỊNH',
+            description: 'Trạng thái không xác định'
+        };
     };
 
     useEffect(() => {
         if (orderId) {
             fetchPaymentData();
         } else {
-            setError('No order ID provided');
+            setError('Không tìm thấy mã đơn hàng');
             setLoading(false);
         }
     }, [orderId]);
 
-
     const fetchPaymentData = async () => {
         try {
             setLoading(true);
-            console.log('🔄 Fetching payment data for order:', orderId);
+            console.log('🔄 Đang tải dữ liệu thanh toán cho đơn hàng:', orderId);
 
             const response = await getPaymentByOrderId(orderId);
-            console.log('📥 Payment data response:', response);
+            console.log('📥 Phản hồi dữ liệu thanh toán:', response);
 
-            setPaymentData(response.result);
-            setError(null);
+            if (response?.success && response?.result) {
+                setPaymentData(response.result);
+                setError(null);
+                console.log('✅ Đã tải thành công dữ liệu thanh toán');
+            } else {
+                throw new Error(response?.message || 'Không thể tải thông tin thanh toán');
+            }
         } catch (error) {
-            console.error('❌ Error fetching payment data:', error);
-            setError('Failed to load payment information');
+            console.error('❌ Lỗi khi tải dữ liệu thanh toán:', error);
+            setError('Không thể tải thông tin thanh toán. Vui lòng thử lại.');
         } finally {
             setLoading(false);
         }
     };
-
 
     const handleGoHome = () => {
         navigate('/');
@@ -112,139 +162,216 @@ const PaymentSuccess = () => {
     };
 
     const handleDownloadReceipt = () => {
-
-        console.log('📄 Downloading receipt...');
+        console.log('📄 Đang tải xuống hóa đơn...');
+        // TODO: Implement download receipt functionality
     };
 
+    // ✅ Loading state
     if (loading) {
         return (
-            <div className="payment-loading">
-                <Spin size="large" tip="Loading payment information..." />
+            <div className="payment-loading" style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '60vh',
+                flexDirection: 'column'
+            }}>
+                <Spin size="large" tip="Đang tải thông tin thanh toán..." />
             </div>
         );
     }
 
+    // ✅ Error state
     if (error) {
         return (
             <div className="payment-error">
                 <Result
                     status="error"
-                    title="Error Loading Payment"
+                    title="Lỗi Tải Thông Tin Thanh Toán"
                     subTitle={error}
                     extra={
-                        <Button type="primary" onClick={handleGoHome}>
-                            Go Home
-                        </Button>
+                        <Space>
+                            <Button type="primary" onClick={handleGoHome}>
+                                Về Trang Chủ
+                            </Button>
+                            <Button onClick={() => window.location.reload()}>
+                                Thử Lại
+                            </Button>
+                        </Space>
                     }
                 />
             </div>
         );
     }
 
+    // ✅ Get payment status info
+    const statusInfo = getPaymentStatusInfo(paymentData?.status);
+    const isPaymentSuccessful = paymentData?.status === 'PAID';
+    const isCancelled = paymentData?.status === 'CANCELLED';
+
     return (
         <div className="payment-success-container">
             <div className="payment-success-content">
-
+                {/* ✅ Dynamic Result based on payment status */}
                 <Result
-                    status="success"
-                    title="Payment Successful!"
+                    status={isPaymentSuccessful ? "success" : isCancelled ? "error" : "warning"}
+                    title={
+                        isPaymentSuccessful
+                            ? "Thanh Toán Thành Công!"
+                            : isCancelled
+                                ? "Thanh Toán Đã Bị Hủy"
+                                : "Trạng Thái Thanh Toán"
+                    }
                     subTitle={
                         <div>
                             <Paragraph>
-                                Your payment has been processed successfully. Your appointment has been confirmed.
+                                {isPaymentSuccessful
+                                    ? "Thanh toán của bạn đã được xử lý thành công. Cuộc hẹn của bạn đã được xác nhận."
+                                    : isCancelled
+                                        ? "Giao dịch thanh toán đã bị hủy. Vui lòng thực hiện lại giao dịch nếu cần."
+                                        : `Trạng thái thanh toán: ${statusInfo.description}`
+                                }
                             </Paragraph>
                             <Text type="secondary">
-                                Order ID: <Text code>{orderId}</Text>
+                                Mã đơn hàng: <Text code>{paymentData?.orderCode || orderId}</Text>
+                            </Text>
+                            <br />
+                            <Text type="secondary">
+                                Mã giao dịch: <Text code>{paymentData?.id}</Text>
                             </Text>
                         </div>
                     }
-                    icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                    icon={statusInfo.icon}
                 />
 
-
+                {/* ✅ Status Alert */}
                 <Alert
-                    message="Payment Confirmed"
-                    description="Your payment has been successfully processed and your appointment is now confirmed. You will receive a confirmation email shortly."
-                    type="success"
+                    message={statusInfo.text}
+                    description={
+                        isPaymentSuccessful
+                            ? "Thanh toán đã được xử lý thành công và cuộc hẹn của bạn hiện đã được xác nhận. Bạn sẽ nhận được email xác nhận trong thời gian ngắn."
+                            : isCancelled
+                                ? `Giao dịch đã bị hủy ${paymentData?.canceledAt ? `vào ${formatDateTime(paymentData.canceledAt)}` : ''}. ${paymentData?.cancellationReason || 'Không có lý do hủy được cung cấp.'}`
+                                : statusInfo.description
+                    }
+                    type={isPaymentSuccessful ? "success" : isCancelled ? "error" : "warning"}
                     showIcon
                     style={{ marginBottom: 24 }}
                 />
 
                 <Row gutter={24}>
-
+                    {/* ✅ Payment Details */}
                     <Col xs={24} lg={14}>
                         <Card
                             title={
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <DollarOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-                                    Payment Details
+                                    <DollarOutlined style={{
+                                        marginRight: 8,
+                                        color: isPaymentSuccessful ? '#52c41a' : '#faad14'
+                                    }} />
+                                    Chi Tiết Thanh Toán
                                 </div>
                             }
                             className="payment-details-card"
                         >
                             <Descriptions column={1} bordered size="small">
-                                <Descriptions.Item label="Order ID">
-                                    <Text code>{paymentData?.orderId || orderId}</Text>
+                                <Descriptions.Item label="Mã đơn hàng">
+                                    <Text code>{paymentData?.orderCode}</Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Transaction ID">
-                                    <Text code>{paymentData?.id || 'TXN-' + Date.now()}</Text>
+                                <Descriptions.Item label="Mã giao dịch">
+                                    <Text code>{paymentData?.id}</Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Amount">
-                                    <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                                        {paymentData?.amount?.toLocaleString() || '500,000'} VND
+                                <Descriptions.Item label="Số tiền">
+                                    <Text strong style={{
+                                        color: isPaymentSuccessful ? '#52c41a' : '#faad14',
+                                        fontSize: '16px'
+                                    }}>
+                                        {formatAmount(paymentData?.amount)} VND
                                     </Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Payment Method">
-                                    <Tag color="blue">{paymentData?.paymentMethod || 'PayOS'}</Tag>
+                                <Descriptions.Item label="Số tiền đã thanh toán">
+                                    <Text strong style={{ color: '#52c41a' }}>
+                                        {formatAmount(paymentData?.amountPaid)} VND
+                                    </Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Status">
-                                    <Tag color="success" icon={<CheckCircleOutlined />}>
-                                        PAID
+                                <Descriptions.Item label="Số tiền còn lại">
+                                    <Text strong style={{
+                                        color: paymentData?.amountRemaining > 0 ? '#faad14' : '#52c41a'
+                                    }}>
+                                        {formatAmount(paymentData?.amountRemaining)} VND
+                                    </Text>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Phương thức thanh toán">
+                                    <Tag color="blue">PayOS</Tag>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Trạng thái">
+                                    <Tag color={statusInfo.color} icon={statusInfo.icon}>
+                                        {statusInfo.text}
                                     </Tag>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Payment Date">
+                                <Descriptions.Item label="Ngày tạo">
                                     <Text>
                                         <ClockCircleOutlined style={{ marginRight: 4 }} />
                                         {formatDateTime(paymentData?.createdAt)}
                                     </Text>
                                 </Descriptions.Item>
+                                {paymentData?.canceledAt && (
+                                    <Descriptions.Item label="Ngày hủy">
+                                        <Text style={{ color: '#ff4d4f' }}>
+                                            <CloseCircleOutlined style={{ marginRight: 4 }} />
+                                            {formatDateTime(paymentData.canceledAt)}
+                                        </Text>
+                                    </Descriptions.Item>
+                                )}
+                                {paymentData?.cancellationReason && (
+                                    <Descriptions.Item label="Lý do hủy">
+                                        <Text type="danger">{paymentData.cancellationReason}</Text>
+                                    </Descriptions.Item>
+                                )}
                             </Descriptions>
+
+                            {/* ✅ Transactions section */}
+                            {paymentData?.transactions && paymentData.transactions.length > 0 && (
+                                <>
+                                    <Divider />
+                                    <Title level={5}>
+                                        <CalendarOutlined style={{ marginRight: 8 }} />
+                                        Lịch Sử Giao Dịch
+                                    </Title>
+                                    {paymentData.transactions.map((transaction, index) => (
+                                        <Card key={index} size="small" style={{ marginBottom: 8 }}>
+                                            <Descriptions column={2} size="small">
+                                                <Descriptions.Item label="Mã giao dịch">
+                                                    <Text code>{transaction.id || `TXN-${index + 1}`}</Text>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Số tiền">
+                                                    <Text strong>{formatAmount(transaction.amount)} VND</Text>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Trạng thái">
+                                                    <Tag color="success">
+                                                        Thành công
+                                                    </Tag>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Thời gian">
+                                                    <Text>{formatDateTime(transaction.createdAt)}</Text>
+                                                </Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
+                                    ))}
+                                </>
+                            )}
 
                             <Divider />
 
 
-                            <Title level={5}>
-                                <CalendarOutlined style={{ marginRight: 8 }} />
-                                Appointment Details
-                            </Title>
-                            <Descriptions column={1} size="small">
-                                <Descriptions.Item label="Service">
-                                    <Text strong>{paymentData?.serviceName || 'General Consultation'}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Doctor">
-                                    <Text>
-                                        <UserOutlined style={{ marginRight: 4 }} />
-                                        {paymentData?.doctorName || 'Dr. John Smith'}
-                                    </Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Date & Time">
-                                    <Text>
-                                        <CalendarOutlined style={{ marginRight: 4 }} />
-                                        {paymentData?.appointmentDate || 'Dec 15, 2024 - 2:00 PM'}
-                                    </Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Department">
-                                    <Tag color="purple">{paymentData?.department || 'Cardiology'}</Tag>
-                                </Descriptions.Item>
-                            </Descriptions>
                         </Card>
                     </Col>
 
-
+                    {/* ✅ Timeline & Actions */}
                     <Col xs={24} lg={10}>
-
+                        {/* ✅ Process Timeline */}
                         <Card
-                            title="Process Timeline"
+                            title="Tiến Trình Xử Lý"
                             style={{ marginBottom: 16 }}
                             size="small"
                         >
@@ -254,78 +381,78 @@ const PaymentSuccess = () => {
                                         color: 'green',
                                         children: (
                                             <div>
-                                                <Text strong>Payment Initiated</Text>
+                                                <Text strong>Khởi tạo thanh toán</Text>
                                                 <br />
                                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                    {paymentData?.createdAt ?
-                                                        formatTime(dayjs(paymentData.createdAt).subtract(5, 'minute').toISOString()) :
-                                                        formatTime(new Date(Date.now() - 300000).toISOString())
+                                                    {formatTime(
+                                                        paymentData?.createdAt
+                                                            ? dayjs(paymentData.createdAt).subtract(2, 'minute').toISOString()
+                                                            : dayjs().subtract(2, 'minute').toISOString()
+                                                    )}
+                                                </Text>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        color: paymentData?.status === 'PAID' ? 'green' : paymentData?.status === 'CANCELLED' ? 'red' : 'orange',
+                                        children: (
+                                            <div>
+                                                <Text strong>
+                                                    {paymentData?.status === 'PAID'
+                                                        ? 'Thanh toán thành công'
+                                                        : paymentData?.status === 'CANCELLED'
+                                                            ? 'Thanh toán bị hủy'
+                                                            : 'Xử lý thanh toán'
                                                     }
                                                 </Text>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        color: 'green',
-                                        children: (
-                                            <div>
-                                                <Text strong>Payment Processed</Text>
                                                 <br />
                                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                    {paymentData?.createdAt ?
-                                                        formatTime(dayjs(paymentData.createdAt).subtract(2, 'minute').toISOString()) :
-                                                        formatTime(new Date(Date.now() - 120000).toISOString())
-                                                    }
+                                                    {formatTime(
+                                                        paymentData?.canceledAt || paymentData?.createdAt || dayjs().toISOString()
+                                                    )}
                                                 </Text>
                                             </div>
                                         ),
                                     },
-                                    {
-                                        color: 'green',
-                                        children: (
-                                            <div>
-                                                <Text strong>Appointment Confirmed</Text>
-                                                <br />
-                                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                    {formatTime(paymentData?.createdAt)}
-                                                </Text>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        color: 'blue',
-                                        children: (
-                                            <div>
-                                                <Text>Email Confirmation Sent</Text>
-                                                <br />
-                                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                    Processing...
-                                                </Text>
-                                            </div>
-                                        ),
-                                    },
+                                    ...(isPaymentSuccessful ? [
+                                        {
+                                            color: 'green',
+                                            children: (
+                                                <div>
+                                                    <Text strong>Xác nhận cuộc hẹn</Text>
+                                                    <br />
+                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                        {formatTime(paymentData?.createdAt)}
+                                                    </Text>
+                                                </div>
+                                            ),
+                                        },
+
+                                    ] : [])
                                 ]}
                             />
                         </Card>
 
-
-                        <Card title="Next Steps" size="small">
+                        {/* ✅ Next Steps */}
+                        <Card title="Bước Tiếp Theo" size="small">
                             <Space direction="vertical" style={{ width: '100%' }}>
-                                <Button
-                                    type="primary"
-                                    icon={<CalendarOutlined />}
-                                    block
-                                    onClick={handleViewAppointments}
-                                >
-                                    View My Appointments
-                                </Button>
+                                {isPaymentSuccessful && (
+                                    <Button
+                                        type="primary"
+                                        icon={<CalendarOutlined />}
+                                        block
+                                        onClick={handleViewAppointments}
+                                    >
+                                        Xem Cuộc Hẹn Của Tôi
+                                    </Button>
+                                )}
 
                                 <Button
                                     icon={<PrinterOutlined />}
                                     block
                                     onClick={handlePrintReceipt}
                                 >
-                                    Print Receipt
+                                    In Hóa Đơn
                                 </Button>
 
                                 <Button
@@ -333,8 +460,18 @@ const PaymentSuccess = () => {
                                     block
                                     onClick={handleDownloadReceipt}
                                 >
-                                    Download Receipt
+                                    Tải Xuống Hóa Đơn
                                 </Button>
+
+                                {!isPaymentSuccessful && (
+                                    <Button
+                                        type="primary"
+                                        block
+                                        onClick={() => window.location.href = '/booking'}
+                                    >
+                                        Đặt Lịch Lại
+                                    </Button>
+                                )}
 
                                 <Divider style={{ margin: '12px 0' }} />
 
@@ -343,22 +480,22 @@ const PaymentSuccess = () => {
                                     block
                                     onClick={handleGoHome}
                                 >
-                                    Back to Home
+                                    Về Trang Chủ
                                 </Button>
                             </Space>
                         </Card>
 
-
+                        {/* ✅ Support Information */}
                         <Alert
-                            message="Need Help?"
+                            message="Cần Hỗ Trợ?"
                             description={
                                 <div>
                                     <Paragraph style={{ margin: 0, fontSize: '12px' }}>
-                                        If you have any questions about your payment or appointment,
-                                        please contact our support team.
+                                        Nếu bạn có bất kỳ câu hỏi nào về thanh toán hoặc cuộc hẹn của mình,
+                                        vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.
                                     </Paragraph>
                                     <Text style={{ fontSize: '12px' }}>
-                                        📞 Hotline: 1900-1234 | 📧 support@hospital.com
+                                        📞 Hotline: 1900-1234 | 📧 hotro@benhvien.com
                                     </Text>
                                 </div>
                             }

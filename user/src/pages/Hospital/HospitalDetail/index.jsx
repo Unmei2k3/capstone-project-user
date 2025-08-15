@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Table, List, Avatar, Button, Spin, Typography, Skeleton } from 'antd';
+import { Row, Col, Card, Table, List, Avatar, Button, Spin, Typography, Skeleton, Tag } from 'antd';
 import imgErrorHospital from "../../../assets/images/errorImgHospital.jpg";
-import { CheckCircleFilled } from "@ant-design/icons";
+import { CheckCircleFilled, DollarOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { getDoctorByHospitalId } from '../../../services/doctorService';
 import { getHospitalDetail, getHospitalWorkDate } from '../../../services/hospitalService';
@@ -15,6 +15,13 @@ function HospitalDetail() {
     const [loadingHospital, setLoadingHospital] = useState(true);
     const [workDate, setWorkDate] = useState([]);
     const navigate = useNavigate();
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        }).format(amount);
+    };
 
     const formatTime = (timeStr) => {
         const [hours, minutes] = timeStr.split(':');
@@ -30,7 +37,7 @@ function HospitalDetail() {
 
     useEffect(() => {
         (async () => {
-            const result = await getHospitalWorkDate(105);
+            const result = await getHospitalWorkDate(hospitalId);
             setWorkDate(result);
         })();
     }, [hospitalId]);
@@ -59,7 +66,11 @@ function HospitalDetail() {
             title: 'Giá',
             dataIndex: 'price',
             key: 'price',
-            render: (price) => price?.toLocaleString('vi-VN') + ' VNĐ',
+            render: (price) => (
+                <Tag color="green" icon={<DollarOutlined />}>
+                    {formatCurrency(price)}
+                </Tag>
+            ),
         },
     ];
 

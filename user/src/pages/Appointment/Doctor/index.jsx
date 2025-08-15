@@ -197,10 +197,12 @@ function AppointmentDoctor({ onNext, defaultValue, infomationValue, onBack }) {
                                 <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
                                 <span style={{ fontWeight: 500 }}>Dịch vụ: {infomationValue.serviceName}</span>
                             </div>
-                            <div style={{ marginBottom: 8 }}>
-                                <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
-                                <span style={{ fontWeight: 500 }}>Chuyên khoa:</span> {defaultValue?.specialty?.name}
-                            </div>
+                            {defaultValue?.specialty?.name && (
+                                <div style={{ marginBottom: 8 }}>
+                                    <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
+                                    <span style={{ fontWeight: 500 }}>Chuyên khoa:</span> {defaultValue.specialty.name}
+                                </div>
+                            )}
                             <div style={{ marginBottom: 8 }}>
                                 <CalendarOutlined
                                     style={{ color: "#00bfff", marginRight: 8 }}

@@ -35,7 +35,17 @@ const RatingPage = () => {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const appointment = location.state?.appointment;
+    const appointment = location.state?.appointment || {
+        // Mock data for testing when accessing directly via URL
+        id: 1,
+        hospitalId: 1,
+        hospitalName: "Bệnh viện Test",
+        doctorId: 1,
+        doctorName: "Dr. Test",
+        department: "Khoa Nội",
+        appointmentDate: "2024-08-10T10:00:00Z",
+        status: "completed"
+    };
 
     const handleHospitalRating = async (values) => {
         setLoading(true);
@@ -77,8 +87,22 @@ const RatingPage = () => {
     };
 
     if (!appointment) {
-        navigate('/patient');
-        return null;
+        return (
+            <div className="rating-page-container">
+                <Card>
+                    <Result
+                        status="warning"
+                        title="Không có thông tin cuộc hẹn"
+                        subTitle="Vui lòng truy cập trang đánh giá từ lịch sử cuộc hẹn của bạn."
+                        extra={
+                            <Button type="primary" onClick={() => navigate('/booking-history')}>
+                                Đi đến lịch sử cuộc hẹn
+                            </Button>
+                        }
+                    />
+                </Card>
+            </div>
+        );
     }
 
     return (

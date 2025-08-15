@@ -23,7 +23,10 @@ import {
     MailOutlined,
     ExclamationCircleOutlined,
     ClockCircleOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    DollarOutlined,
+    CalendarOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPaymentByOrderId, cancelPayment } from '../../services/paymentService';
@@ -32,6 +35,8 @@ import './PaymentCancelled.scss';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
+// ✅ Set Vietnamese locale
+dayjs.locale('vi');
 
 const { Title, Text, Paragraph } = Typography;
 const { confirm } = Modal;
@@ -44,123 +49,154 @@ const PaymentCancelled = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-
     const orderId = searchParams.get('orderId') || searchParams.get('orderCode');
     const cancelReason = searchParams.get('cancel') || searchParams.get('reason');
     const status = searchParams.get('status');
 
+    // ✅ Vietnamese date formatting
     const formatDateTime = (dateString) => {
-        if (!dateString) return new Date().toLocaleString();
+        if (!dateString) return dayjs().format('HH:mm:ss DD/MM/YYYY');
 
         try {
             const date = dayjs(dateString);
-
-            return date.format('HH:mm:ss DD/M/YYYY');
+            return date.format('HH:mm:ss DD/MM/YYYY');
         } catch (error) {
-            console.error('Error formatting date:', error);
-            return new Date().toLocaleString();
+            console.error('❌ Lỗi định dạng ngày:', error);
+            return dayjs().format('HH:mm:ss DD/MM/YYYY');
         }
     };
 
     const formatTime = (dateString) => {
-        if (!dateString) return new Date().toLocaleTimeString();
+        if (!dateString) return dayjs().format('HH:mm:ss');
 
         try {
             const date = dayjs(dateString);
             return date.format('HH:mm:ss');
         } catch (error) {
-            console.error('Error formatting time:', error);
-            return new Date().toLocaleTimeString();
+            console.error('❌ Lỗi định dạng giờ:', error);
+            return dayjs().format('HH:mm:ss');
         }
+    };
+
+    // ✅ Vietnamese amount formatting
+    const formatAmount = (amount) => {
+        if (!amount && amount !== 0) return '0';
+        return new Intl.NumberFormat('vi-VN').format(amount);
+    };
+
+    // ✅ Vietnamese cancellation reason mapping
+    const getCancellationReason = (reason) => {
+        const reasonMap = {
+            'user': 'Người dùng hủy',
+            'timeout': 'Hết thời gian chờ',
+            'failed': 'Thanh toán thất bại',
+            'system': 'Lỗi hệ thống',
+            'insufficient_funds': 'Không đủ số dư',
+            'card_declined': 'Thẻ bị từ chối',
+            'network_error': 'Lỗi mạng'
+        };
+        return reasonMap[reason] || 'Đã hủy';
+    };
+
+    // ✅ Refund status mapping
+    const getRefundStatusInfo = (status) => {
+        const statusMap = {
+            'completed': { color: 'success', text: 'ĐÃ HOÀN TIỀN' },
+            'processing': { color: 'processing', text: 'ĐANG XỬ LÝ' },
+            'pending': { color: 'warning', text: 'CHỜ XỬ LÝ' },
+            'failed': { color: 'error', text: 'HOÀN TIỀN THẤT BẠI' },
+            'no_charge': { color: 'default', text: 'CHƯA THANH TOÁN' }
+        };
+        return statusMap[status?.toLowerCase()] || { color: 'default', text: 'KHÔNG XÁC ĐỊNH' };
     };
 
     useEffect(() => {
         if (orderId) {
             fetchPaymentData();
         } else {
-            setError('No order ID provided');
+            setError('Không tìm thấy mã đơn hàng');
             setLoading(false);
         }
     }, [orderId]);
 
-
     const fetchPaymentData = async () => {
         try {
             setLoading(true);
-            console.log('🔄 Fetching payment data for cancelled order:', orderId);
+            console.log('🔄 Đang tải dữ liệu thanh toán đã hủy cho đơn hàng:', orderId);
 
             const response = await getPaymentByOrderId(orderId);
-            console.log('📥 Cancelled payment data:', response);
+            console.log('📥 Dữ liệu thanh toán đã hủy:', response);
 
-            setPaymentData(response.result);
-            setError(null);
+            if (response?.success && response?.result) {
+                setPaymentData(response.result);
+                setError(null);
+                console.log('✅ Đã tải thành công dữ liệu thanh toán đã hủy');
+            } else {
+                throw new Error(response?.message || 'Không thể tải thông tin thanh toán');
+            }
         } catch (error) {
-            console.error('❌ Error fetching payment data:', error);
-            setError('Failed to load payment information');
+            console.error('❌ Lỗi khi tải dữ liệu thanh toán:', error);
+            setError('Không thể tải thông tin thanh toán. Vui lòng thử lại.');
         } finally {
             setLoading(false);
         }
     };
 
-
     const handleConfirmCancellation = () => {
         confirm({
-            title: 'Confirm Payment Cancellation',
+            title: 'Xác Nhận Hủy Thanh Toán',
             icon: <ExclamationCircleOutlined />,
             content: (
                 <div>
                     <Paragraph>
-                        Are you sure you want to cancel this payment? This action will:
+                        Bạn có chắc chắn muốn hủy thanh toán này? Hành động này sẽ:
                     </Paragraph>
                     <ul>
-                        <li>Cancel your appointment booking</li>
-                        <li>Refund the payment (if already processed)</li>
-                        <li>Free up the appointment slot for others</li>
+                        <li>Hủy đặt lịch khám của bạn</li>
+                        <li>Hoàn tiền (nếu đã được xử lý)</li>
+                        <li>Giải phóng lịch khám cho người khác</li>
                     </ul>
                     <Paragraph style={{ color: '#ff4d4f' }}>
-                        <strong>Note:</strong> Cancellation may take 3-5 business days for refund processing.
+                        <strong>Lưu ý:</strong> Việc hoàn tiền có thể mất 3-5 ngày làm việc để xử lý.
                     </Paragraph>
                 </div>
             ),
-            okText: 'Yes, Cancel Payment',
+            okText: 'Có, Hủy Thanh Toán',
             okType: 'danger',
-            cancelText: 'Keep Booking',
+            cancelText: 'Giữ Đặt Lịch',
             onOk: performCancellation,
         });
     };
 
-
     const performCancellation = async () => {
         try {
             setCancelling(true);
-            console.log('🔄 Cancelling payment for order:', orderId);
+            console.log('🔄 Đang hủy thanh toán cho đơn hàng:', orderId);
 
             const cancelData = {
-                reason: cancelReason || 'User requested cancellation',
+                reason: cancelReason || 'Người dùng yêu cầu hủy',
                 cancelledAt: new Date().toISOString()
             };
 
             await cancelPayment(orderId, cancelData);
-            console.log('✅ Payment cancelled successfully');
-
+            console.log('✅ Đã hủy thanh toán thành công');
 
             await fetchPaymentData();
 
             Modal.success({
-                title: 'Payment Cancelled',
-                content: 'Your payment has been cancelled successfully. Refund will be processed within 3-5 business days.',
+                title: 'Đã Hủy Thanh Toán',
+                content: 'Thanh toán của bạn đã được hủy thành công. Tiền hoàn sẽ được xử lý trong vòng 3-5 ngày làm việc.',
             });
         } catch (error) {
-            console.error('❌ Error cancelling payment:', error);
+            console.error('❌ Lỗi khi hủy thanh toán:', error);
             Modal.error({
-                title: 'Cancellation Failed',
-                content: 'Failed to cancel the payment. Please contact support for assistance.',
+                title: 'Hủy Thất Bại',
+                content: 'Không thể hủy thanh toán. Vui lòng liên hệ hỗ trợ để được trợ giúp.',
             });
         } finally {
             setCancelling(false);
         }
     };
-
 
     const handleRetryPayment = () => {
         navigate(`/payment/retry?orderId=${orderId}`);
@@ -171,72 +207,87 @@ const PaymentCancelled = () => {
     };
 
     const handleBookNewAppointment = () => {
-        navigate('/appointments/book');
+        navigate('/booking');
     };
 
+    // ✅ Loading state
     if (loading) {
         return (
-            <div className="payment-loading">
-                <Spin size="large" tip="Loading payment information..." />
+            <div className="payment-loading" style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '60vh',
+                flexDirection: 'column'
+            }}>
+                <Spin size="large" tip="Đang tải thông tin thanh toán..." />
             </div>
         );
     }
 
+    // ✅ Error state
     if (error) {
         return (
             <div className="payment-error">
                 <Result
                     status="error"
-                    title="Error Loading Payment"
+                    title="Lỗi Tải Thông Tin Thanh Toán"
                     subTitle={error}
                     extra={
-                        <Button type="primary" onClick={handleGoHome}>
-                            Go Home
-                        </Button>
+                        <Space>
+                            <Button type="primary" onClick={handleGoHome}>
+                                Về Trang Chủ
+                            </Button>
+                            <Button onClick={() => window.location.reload()}>
+                                Thử Lại
+                            </Button>
+                        </Space>
                     }
                 />
             </div>
         );
     }
 
+    const refundInfo = getRefundStatusInfo(paymentData?.refundStatus);
+
     return (
         <div className="payment-cancelled-container">
             <div className="payment-cancelled-content">
-
+                {/* ✅ Main Result */}
                 <Result
                     status="error"
-                    title="Payment Cancelled"
+                    title="Thanh Toán Đã Bị Hủy"
                     subTitle={
                         <div>
                             <Paragraph>
-                                Your payment was cancelled and the appointment booking was not completed.
+                                Thanh toán của bạn đã bị hủy và việc đặt lịch khám không được hoàn thành.
                             </Paragraph>
                             <Text type="secondary">
-                                Order ID: <Text code>{orderId}</Text>
+                                Mã đơn hàng: <Text code>{paymentData?.orderCode || orderId}</Text>
+                            </Text>
+                            <br />
+                            <Text type="secondary">
+                                Mã giao dịch: <Text code>{paymentData?.id}</Text>
                             </Text>
                         </div>
                     }
                     icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                 />
 
-
+                {/* ✅ Cancellation Alert */}
                 <Alert
-                    message="Payment Cancelled"
+                    message="Thanh Toán Đã Hủy"
                     description={
                         <div>
                             <Paragraph style={{ margin: 0 }}>
                                 {cancelReason === 'user'
-                                    ? 'You cancelled the payment process. No charges have been made to your account.'
+                                    ? 'Bạn đã hủy quá trình thanh toán. Tài khoản của bạn sẽ không bị tính phí.'
                                     : cancelReason === 'timeout'
-                                        ? 'The payment session expired. Please try booking again.'
-                                        : 'The payment was cancelled. Please contact support if this was unexpected.'
+                                        ? 'Phiên thanh toán đã hết hạn. Vui lòng thử đặt lịch lại.'
+                                        : paymentData?.cancellationReason || 'Thanh toán đã bị hủy. Vui lòng liên hệ hỗ trợ nếu điều này không mong muốn.'
                                 }
                             </Paragraph>
-                            {paymentData?.refundStatus && (
-                                <Text style={{ fontSize: '12px' }}>
-                                    Refund Status: <Tag color="processing">{paymentData.refundStatus}</Tag>
-                                </Text>
-                            )}
+                            
                         </div>
                     }
                     type="warning"
@@ -245,83 +296,103 @@ const PaymentCancelled = () => {
                 />
 
                 <Row gutter={24}>
-
+                    {/* ✅ Cancellation Details */}
                     <Col xs={24} lg={14}>
                         <Card
                             title={
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                     <InfoCircleOutlined style={{ marginRight: 8, color: '#ff4d4f' }} />
-                                    Cancellation Details
+                                    Chi Tiết Hủy Thanh Toán
                                 </div>
                             }
                             className="cancellation-details-card"
                         >
                             <Descriptions column={1} bordered size="small">
-                                <Descriptions.Item label="Order ID">
-                                    <Text code>{paymentData?.id || orderId}</Text>
+                                <Descriptions.Item label="Mã đơn hàng">
+                                    <Text code>{paymentData?.orderCode || orderId}</Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Cancellation Time">
+                                <Descriptions.Item label="Mã giao dịch">
+                                    <Text code>{paymentData?.id}</Text>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Thời gian hủy">
                                     <Text>
                                         <ClockCircleOutlined style={{ marginRight: 4 }} />
-                                        {formatDateTime(paymentData?.cancelledAt)}
+                                        {formatDateTime(paymentData?.canceledAt || paymentData?.createdAt)}
                                     </Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Cancellation Reason">
+                                <Descriptions.Item label="Lý do hủy">
                                     <Tag color="orange">
-                                        {cancelReason === 'user' ? 'User Cancelled' :
-                                            cancelReason === 'timeout' ? 'Session Timeout' :
-                                                cancelReason === 'failed' ? 'Payment Failed' :
-                                                    'Cancelled'}
+                                        {paymentData?.cancellationReason || getCancellationReason(cancelReason)}
                                     </Tag>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Amount">
+                                <Descriptions.Item label="Số tiền">
                                     <Text style={{ fontSize: '16px' }}>
-                                        {paymentData?.amount?.toLocaleString() || '500,000'} VND
+                                        {formatAmount(paymentData?.amount)} VND
                                     </Text>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Status">
+                                <Descriptions.Item label="Số tiền đã thanh toán">
+                                    <Text strong style={{ color: '#52c41a' }}>
+                                        {formatAmount(paymentData?.amountPaid)} VND
+                                    </Text>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Số tiền còn lại">
+                                    <Text strong style={{ color: '#faad14' }}>
+                                        {formatAmount(paymentData?.amountRemaining)} VND
+                                    </Text>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Trạng thái">
                                     <Tag color="error" icon={<CloseCircleOutlined />}>
-                                        CANCELLED
+                                        ĐÃ HỦY
                                     </Tag>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Refund Status">
-                                    <Tag color={paymentData?.refundStatus === 'completed' ? 'success' : 'processing'}>
-                                        {paymentData?.refundStatus?.toUpperCase() || 'NO_CHARGE'}
-                                    </Tag>
+                                <Descriptions.Item label="Phương thức thanh toán">
+                                    <Tag color="blue">PayOS</Tag>
                                 </Descriptions.Item>
+                                
                             </Descriptions>
 
                             <Divider />
 
 
-                            <Title level={5}>
-                                <ExclamationCircleOutlined style={{ marginRight: 8 }} />
-                                Original Booking Details
-                            </Title>
-                            <Descriptions column={1} size="small">
-                                <Descriptions.Item label="Service">
-                                    <Text>{paymentData?.serviceName || 'General Consultation'}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Doctor">
-                                    <Text>{paymentData?.doctorName || 'Dr. John Smith'}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Requested Date & Time">
-                                    <Text style={{ textDecoration: 'line-through', color: '#999' }}>
-                                        {paymentData?.appointmentDate || 'Dec 15, 2024 - 2:00 PM'}
-                                    </Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Department">
-                                    <Tag color="purple">{paymentData?.department || 'Cardiology'}</Tag>
-                                </Descriptions.Item>
-                            </Descriptions>
+
+                            {/* ✅ Transactions History */}
+                            {paymentData?.transactions && paymentData.transactions.length > 0 && (
+                                <>
+                                    <Divider />
+                                    <Title level={5}>
+                                        <DollarOutlined style={{ marginRight: 8 }} />
+                                        Lịch Sử Giao Dịch
+                                    </Title>
+                                    {paymentData.transactions.map((transaction, index) => (
+                                        <Card key={index} size="small" style={{ marginBottom: 8 }}>
+                                            <Descriptions column={2} size="small">
+                                                <Descriptions.Item label="Mã giao dịch">
+                                                    <Text code>{transaction.id || `TXN-${index + 1}`}</Text>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Số tiền">
+                                                    <Text strong>{formatAmount(transaction.amount)} VND</Text>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Trạng thái">
+                                                    <Tag color={transaction.status === 'SUCCESS' ? 'success' : 'error'}>
+                                                        {transaction.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}
+                                                    </Tag>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Thời gian">
+                                                    <Text>{formatDateTime(transaction.createdAt)}</Text>
+                                                </Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
+                                    ))}
+                                </>
+                            )}
                         </Card>
                     </Col>
 
-
+                    {/* ✅ Actions & Support */}
                     <Col xs={24} lg={10}>
-
+                        {/* ✅ Next Actions */}
                         <Card
-                            title="What would you like to do?"
+                            title="Bạn muốn làm gì?"
                             style={{ marginBottom: 16 }}
                             size="small"
                         >
@@ -333,15 +404,15 @@ const PaymentCancelled = () => {
                                     onClick={handleRetryPayment}
                                     size="large"
                                 >
-                                    Retry Payment
+                                    Thử Thanh Toán Lại
                                 </Button>
 
                                 <Button
-                                    icon={<RedoOutlined />}
+                                    icon={<CalendarOutlined />}
                                     block
                                     onClick={handleBookNewAppointment}
                                 >
-                                    Book New Appointment
+                                    Đặt Lịch Khám Mới
                                 </Button>
 
                                 <Divider style={{ margin: '12px 0' }} />
@@ -351,10 +422,10 @@ const PaymentCancelled = () => {
                                     block
                                     onClick={handleGoHome}
                                 >
-                                    Back to Home
+                                    Về Trang Chủ
                                 </Button>
 
-                                {paymentData?.status !== 'cancelled' && (
+                                {paymentData?.status !== 'CANCELLED' && (
                                     <>
                                         <Divider style={{ margin: '12px 0' }} />
                                         <Button
@@ -363,23 +434,23 @@ const PaymentCancelled = () => {
                                             loading={cancelling}
                                             onClick={handleConfirmCancellation}
                                         >
-                                            Confirm Cancellation
+                                            Xác Nhận Hủy
                                         </Button>
                                     </>
                                 )}
                             </Space>
                         </Card>
 
-
-                        <Card title="Common Cancellation Reasons" size="small" style={{ marginBottom: 16 }}>
+                        {/* ✅ Common Cancellation Reasons */}
+                        <Card title="Lý Do Hủy Phổ Biến" size="small" style={{ marginBottom: 16 }}>
                             <List
                                 size="small"
                                 dataSource={[
-                                    'Changed my mind about the appointment',
-                                    'Payment method issue',
-                                    'Need to reschedule to a different time',
-                                    'Found another healthcare provider',
-                                    'Technical issues during payment'
+                                    'Thay đổi ý định về cuộc hẹn',
+                                    'Vấn đề phương thức thanh toán',
+                                    'Cần đổi lịch sang thời gian khác',
+                                    'Tìm được nhà cung cấp y tế khác',
+                                    'Lỗi kỹ thuật trong quá trình thanh toán'
                                 ]}
                                 renderItem={(item, index) => (
                                     <List.Item style={{ padding: '4px 0' }}>
@@ -391,11 +462,11 @@ const PaymentCancelled = () => {
                             />
                         </Card>
 
-
-                        <Card title="Need Help?" size="small">
+                        {/* ✅ Support Information */}
+                        <Card title="Cần Trợ Giúp?" size="small">
                             <Space direction="vertical" style={{ width: '100%' }}>
                                 <div>
-                                    <Text strong style={{ fontSize: '12px' }}>Contact Support:</Text>
+                                    <Text strong style={{ fontSize: '12px' }}>Liên Hệ Hỗ Trợ:</Text>
                                 </div>
 
                                 <Button
@@ -404,22 +475,22 @@ const PaymentCancelled = () => {
                                     block
                                     href="tel:1900-1234"
                                 >
-                                    Call: 1900-1234
+                                    Gọi: 1900-1234
                                 </Button>
 
                                 <Button
                                     icon={<MailOutlined />}
                                     size="small"
                                     block
-                                    href="mailto:support@hospital.com"
+                                    href="mailto:hotro@benhvien.com"
                                 >
-                                    Email: support@hospital.com
+                                    Email: hotro@benhvien.com
                                 </Button>
                             </Space>
 
                             <Alert
-                                message="Refund Policy"
-                                description="If payment was processed, refunds typically take 3-5 business days to appear in your account."
+                                message="Chính Sách Hoàn Tiền"
+                                description="Nếu thanh toán đã được xử lý, tiền hoàn thường mất 3-5 ngày làm việc để xuất hiện trong tài khoản của bạn."
                                 type="info"
                                 showIcon
                                 style={{ marginTop: 12, fontSize: '11px' }}

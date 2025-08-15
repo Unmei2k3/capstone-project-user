@@ -28,10 +28,67 @@ import {
 import { getAppointmentByUserId, cancelAppointment } from '../../services/appointmentService';
 import BookingDetailDrawer from './BookingDetailDrawer';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+import 'dayjs/locale/vi'; // ✅ Import Vietnamese locale
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import locale from 'antd/locale/vi_VN'; // ✅ Import Ant Design Vietnamese locale
+
+// ✅ Configure dayjs plugins and locale
+dayjs.extend(isBetween);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('vi'); // ✅ Set Vietnamese as default locale
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+
+// ✅ Vietnamese locale config for DatePicker
+const viLocale = {
+    ...locale,
+    DatePicker: {
+        ...locale.DatePicker,
+        lang: {
+            ...locale.DatePicker.lang,
+            placeholder: 'Chọn ngày',
+            yearPlaceholder: 'Chọn năm',
+            quarterPlaceholder: 'Chọn quý',
+            monthPlaceholder: 'Chọn tháng',
+            weekPlaceholder: 'Chọn tuần',
+            rangePlaceholder: ['Từ ngày', 'Đến ngày'],
+            rangeYearPlaceholder: ['Từ năm', 'Đến năm'],
+            rangeMonthPlaceholder: ['Từ tháng', 'Đến tháng'],
+            rangeWeekPlaceholder: ['Từ tuần', 'Đến tuần'],
+            today: 'Hôm nay',
+            now: 'Bây giờ',
+            backToToday: 'Quay lại hôm nay',
+            ok: 'Đồng ý',
+            clear: 'Xóa',
+            month: 'Tháng',
+            year: 'Năm',
+            timeSelect: 'Chọn thời gian',
+            dateSelect: 'Chọn ngày',
+            weekSelect: 'Chọn tuần',
+            monthSelect: 'Chọn tháng',
+            yearSelect: 'Chọn năm',
+            decadeSelect: 'Chọn thập kỷ',
+            yearFormat: 'YYYY',
+            dateFormat: 'DD/MM/YYYY',
+            dayFormat: 'DD',
+            dateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+            monthBeforeYear: true, // ✅ Changed from false to true
+            previousMonth: 'Tháng trước (PageUp)',
+            nextMonth: 'Tháng sau (PageDown)',
+            previousYear: 'Năm trước (Control + trái)',
+            nextYear: 'Năm sau (Control + phải)',
+            previousDecade: 'Thập kỷ trước',
+            nextDecade: 'Thập kỷ sau',
+            previousCentury: 'Thế kỷ trước',
+            nextCentury: 'Thế kỷ sau'
+        }
+    }
+};
 
 const BookingHistory = () => {
     // ✅ Get user from Redux store
@@ -71,7 +128,6 @@ const BookingHistory = () => {
             const response = await getAppointmentByUserId(userId);
             console.log('📦 Raw API response:', response);
 
-
             // Handle response structure
             const appointmentsData = response.result || response.data || response || [];
             console.log('✅ Appointments fetched:', appointmentsData.length);
@@ -84,7 +140,7 @@ const BookingHistory = () => {
                 return;
             }
 
-            // Transform backend data to frontend format
+            // ✅ Transform backend data to frontend format with proper date handling
             const transformedAppointments = appointmentsData.map((appointment, index) => {
                 // Debug first few appointments to understand structure
                 if (index < 3) {
@@ -92,16 +148,33 @@ const BookingHistory = () => {
                     console.log(`🔍 Keys:`, Object.keys(appointment));
                 }
 
+                // ✅ Parse appointmentTime properly with Vietnamese locale
+                const appointmentTime = appointment.appointmentTime;
+                let parsedDate = null;
+                let formattedDate = 'Chưa xác định';
+                let formattedTime = 'Chưa xác định';
+
+                if (appointmentTime) {
+                    try {
+                        parsedDate = dayjs(appointmentTime).locale('vi');
+                        if (parsedDate.isValid()) {
+                            formattedDate = parsedDate.format('DD/MM/YYYY');
+                            formattedTime = parsedDate.format('HH:mm');
+                        } else {
+                            console.warn('⚠️ Invalid date:', appointmentTime);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error parsing date:', appointmentTime, error);
+                    }
+                }
+
                 return {
                     id: appointment.id,
                     bookingId: `BK${String(appointment.id).padStart(6, '0')}`,
-                    bookingDate: appointment.appointmentTime
-                        ? dayjs(appointment.appointmentTime).format('DD/MM/YYYY')
-                        : 'Chưa xác định',
-                    appointmentTime: appointment.appointmentTime
-                        ? dayjs(appointment.appointmentTime).format('HH:mm')
-                        : 'Chưa xác định',
-                    appointmentDate: appointment.appointmentTime,
+                    bookingDate: formattedDate,
+                    appointmentTime: formattedTime,
+                    appointmentDate: parsedDate, // ✅ Store as dayjs object for filtering
+                    appointmentDateISO: appointmentTime, // ✅ Store original ISO string
                     status: mapBackendStatus(appointment.status),
 
                     // Patient information (using current user data)
@@ -132,7 +205,7 @@ const BookingHistory = () => {
 
                     // Schedule information
                     workDate: appointment.doctorSchedule?.workDate
-                        ? dayjs(appointment.doctorSchedule.workDate).format('DD/MM/YYYY')
+                        ? dayjs(appointment.doctorSchedule.workDate).locale('vi').format('DD/MM/YYYY')
                         : '',
                     startTime: appointment.doctorSchedule?.startTime || '',
                     endTime: appointment.doctorSchedule?.endTime || '',
@@ -153,6 +226,7 @@ const BookingHistory = () => {
                 acc[app.status] = (acc[app.status] || 0) + 1;
                 return acc;
             }, {}));
+
             setAppointments(transformedAppointments);
             setFilteredAppointments(transformedAppointments);
 
@@ -221,14 +295,16 @@ const BookingHistory = () => {
         }
 
         return mappedStatus;
-    };    // ✅ Load appointments on component mount
+    };
+
+    // ✅ Load appointments on component mount
     useEffect(() => {
         console.log('🔥 useEffect triggered - fetching appointments');
         console.log('👤 Current user from Redux:', user);
         fetchAppointments();
     }, []);
 
-    // ✅ Filter appointments based on search criteria
+    // ✅ Filter appointments based on search criteria - FIXED DATE FILTERING
     useEffect(() => {
         let filtered = [...appointments];
 
@@ -249,13 +325,37 @@ const BookingHistory = () => {
             filtered = filtered.filter(appointment => appointment.status === statusFilter);
         }
 
-        // Filter by date range
+        // ✅ Fixed date range filtering
         if (dateRange && dateRange.length === 2) {
             const [startDate, endDate] = dateRange;
-            filtered = filtered.filter(appointment => {
-                const appointmentDate = dayjs(appointment.bookingDate, 'DD/MM/YYYY');
-                return appointmentDate.isBetween(startDate, endDate, 'day', '[]');
+            console.log('📅 Filtering by date range:', {
+                startDate: startDate.format('YYYY-MM-DD'),
+                endDate: endDate.format('YYYY-MM-DD'),
+                totalAppointments: filtered.length
             });
+
+            filtered = filtered.filter(appointment => {
+                // ✅ Check if appointmentDate exists and is valid
+                if (!appointment.appointmentDate || !appointment.appointmentDate.isValid()) {
+                    console.warn('⚠️ Invalid appointment date for filtering:', appointment);
+                    return false;
+                }
+
+                // ✅ Use dayjs isBetween method properly
+                const isInRange = appointment.appointmentDate.isBetween(startDate, endDate, 'day', '[]');
+
+                if (isInRange) {
+                    console.log('✅ Appointment in range:', {
+                        bookingId: appointment.bookingId,
+                        date: appointment.appointmentDate.format('YYYY-MM-DD'),
+                        formatted: appointment.bookingDate
+                    });
+                }
+
+                return isInRange;
+            });
+
+            console.log(`📊 After date filtering: ${filtered.length} appointments remaining`);
         }
 
         setFilteredAppointments(filtered);
@@ -325,9 +425,7 @@ const BookingHistory = () => {
             render: (date, record) => (
                 <div>
                     <div><CalendarOutlined /> {date}</div>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {record.appointmentTime}
-                    </Text>
+
                 </div>
             )
         },
@@ -497,12 +595,16 @@ const BookingHistory = () => {
                     </Col>
 
                     <Col xs={24} md={10}>
+                        {/* ✅ RangePicker with Vietnamese locale */}
                         <RangePicker
                             style={{ width: '100%' }}
                             placeholder={['Từ ngày', 'Đến ngày']}
                             format="DD/MM/YYYY"
                             value={dateRange}
                             onChange={setDateRange}
+                            locale={viLocale.DatePicker}
+                            allowClear
+                            showToday={false}
                         />
                     </Col>
                 </Row>

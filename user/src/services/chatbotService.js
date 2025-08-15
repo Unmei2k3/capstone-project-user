@@ -34,7 +34,7 @@ export const sendMessage = async (sessionId, userId, message, streaming = false)
         const payload = {
             appName: "hospital_booking_agent",
             userId: `${userId}`,
-            sessionId: sessionId,
+            sessionId: `${sessionId}`,
             newMessage: {
                 parts: [
                     {

@@ -78,16 +78,6 @@ export const routes = [
       },
 
       {
-        path: "profile",
-        element: <ProtectedRoute allowedRoles={['Patient']} />,
-        children: [
-          {
-            index: true,
-            element: <UpadteProfile /> // đã vẽ report 3
-          }
-        ]
-      },
-      {
         path: "doctor-detail/:doctorId",
         element: <DoctorDetail /> // đã vẽ report 3
       },
@@ -101,9 +91,11 @@ export const routes = [
       },
       {
         path: "booking-history",
-
-        element: <BookingHistoryPage /> // đã vẽ report 3
-
+        element: (
+          <ProtectedRoute allowedRoles={['Patient']}>
+            <BookingHistoryPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: "account",
@@ -149,7 +141,7 @@ export const routes = [
         path: "*",
         element: <Navigate to="/" />
       },
-  
+
       {
         path: "hospital-detail/:hospitalId",
         element: (
@@ -173,6 +165,16 @@ export const routes = [
 
   },
   {
+    path: "profile",
+    element: <ProtectedRoute allowedRoles={['Patient']} ><LayoutCommon /></ProtectedRoute>,
+    children: [
+      {
+        index: true,
+        element: <UpadteProfile /> // đã vẽ report 3
+      }
+    ]
+  },
+  {
     path: "/login",
     element: <BlankLayout />,
     children: [
@@ -194,6 +196,7 @@ export const routes = [
       },
     ]
   },
+
   {
     path: "/appointment",
     element: (
@@ -208,8 +211,6 @@ export const routes = [
       },
       {
         path: "booking",
-
-        index: true,
         element: <UserBookingFlow />,
 
       },

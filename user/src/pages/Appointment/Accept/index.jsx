@@ -121,7 +121,7 @@ function AppointmentReviewPage() {
     const handleBackToPayment = () => {
         navigate("/appointment/booking" +
             `?hospitalId=${stepData?.hospitalId}&serviceId=${stepData?.serviceId}&serviceName=${stepData?.serviceName}&hospitalName=${stepData?.hospitalName}`,
-            { state: { stepData: stepData, backToStepIndex: 3 } }
+            { state: { stepData: stepData, backToStepIndex: stepData.backToStepIndex ?? 0 } }
         );
     };
 
@@ -146,73 +146,92 @@ function AppointmentReviewPage() {
             }));
             return;
         }
+
         try {
+            // ✅ Tạo payload không phụ thuộc vào response
             const payload = {
                 hospitalId: Number(stepData.hospitalId),
                 serviceId: Number(stepData.serviceId),
-                specializationId: Number(stepData.specialty?.id || 0),
-                doctorId: Number(stepData.doctor?.id || 0),
-                returnUrl: `http://localhost:3000/payment/success?orderId=${latestPayment?.orderCode}`,
-                cancelUrl: `http://localhost:3000/payment/cancelled?orderId=${latestPayment?.orderCode}`,
+                returnUrl: `http://localhost:3000/payment/success`,
+                cancelUrl: `http://localhost:3000/payment/cancelled`,
                 appointmentDate: stepData?.date,
                 bookingTime: stepData.shift === "morning" ? 1 : 2,
                 paymentMethod: stepData.paymentType === "cash" ? 1 : 2,
                 note: "",
+                ...(stepData.specialty?.id ? { specializationId: Number(stepData.specialty.id) } : {}),
+                ...(stepData.doctor?.id ? { doctorId: Number(stepData.doctor.id) } : {})
             };
-            console.log("pay load in booking confirm : " + JSON.stringify(payload));
+
+            console.log("📤 Payload to send:", JSON.stringify(payload));
+
+            // ✅ Gọi API booking
             const bookingResponse = await createBookAppointment(payload);
-            console.log("Booking response:", bookingResponse);
-            window.location.href = (`${bookingResponse.result.checkoutUrl}/`);
-            // navigate(`https://pay.payos.vn/web/${latestPayment.payOsId}/`); 
-            dispatch(setMessage({ type: 'success', content: 'Đặt khám thành công! ' }));
+            console.log("✅ Booking response:", bookingResponse);
+
+            // ✅ Kiểm tra response structure
+
+
+            const { result } = bookingResponse;
+            console.log("📋 Booking result:", result);
+
+            // ✅ Hiển thị thông báo thành công
+            dispatch(setMessage({
+                type: 'success',
+                content: 'Đặt khám thành công!'
+            }));
+
+            // ✅ Xử lý theo phương thức thanh toán - CHỈ dựa vào bookingResponse
             if (stepData.paymentType === 'online') {
-                console.log("💳 Online payment selected, getting payment link...");
+                console.log("💳 Online payment selected");
 
-                // ✅ Wait a moment then fetch latest payment
-                setTimeout(async () => {
-                    try {
-                        const hospitalId = Number(stepData.hospitalId);
-                        const userId = user.id;
-
-                        const response = await getAllPayment(hospitalId, userId);
-
-                        if (response?.result && Array.isArray(response.result)) {
-                            const sortedPayments = response.result.sort((a, b) =>
-                                new Date(b.createdOn) - new Date(a.createdOn)
-                            );
-
-                            const newestPayment = sortedPayments[0];
-
-                            if (latestPayment?.payOsId) {
-                                console.log(" Redirecting to PayOS:", latestPayment.payOsId);
-                                // window.location.href = `https://pay.payos.vn/web/${latestPayment.payOsId}/`;
-                            } else {
-                                console.error(" No payOsId found in newest payment");
-                                dispatch(setMessage({
-                                    type: 'error',
-                                    content: 'Không thể tạo liên kết thanh toán. Vui lòng thử lại.'
-                                }));
-                            }
-                        }
-                    } catch (error) {
-                        console.error(' Error getting payment link:', error);
-                        dispatch(setMessage({
-                            type: 'error',
-                            content: 'Có lỗi khi tạo liên kết thanh toán.'
-                        }));
-                    }
-                }, 1000); // Wait 2 seconds for payment to be processed
-
+                // Chỉ sử dụng dữ liệu từ bookingResponse
+                if (result.checkoutUrl) {
+                    console.log("🔗 Redirecting to checkout URL:", result.checkoutUrl);
+                    window.location.href = result.checkoutUrl;
+                } else if (result.paymentUrl) {
+                    console.log("🔗 Redirecting to payment URL:", result.paymentUrl);
+                    window.location.href = result.paymentUrl;
+                } else if (result.payOsId) {
+                    console.log("🔗 Redirecting to PayOS:", result.payOsId);
+                    window.location.href = `https://pay.payos.vn/web/${result.payOsId}/`;
+                } else {
+                    console.error("❌ No payment URL found in response");
+                    console.log("🔍 Available fields:", Object.keys(result));
+                    dispatch(setMessage({
+                        type: 'error',
+                        content: 'Không thể tạo liên kết thanh toán. Vui lòng thử lại.'
+                    }));
+                }
             } else {
-
+                // Thanh toán tiền mặt
+                console.log("💰 Cash payment selected");
                 dispatch(setMessage({
                     type: 'success',
                     content: 'Đặt khám thành công! Vui lòng thanh toán tại cơ sở y tế.'
                 }));
-                navigate('/appointments');
+
+                // Redirect về trang booking history
+                setTimeout(() => {
+                    navigate('/booking-history');
+                }, 2000);
             }
+
         } catch (error) {
-            dispatch(setMessage({ type: 'error', content: 'Vui lòng chọn lịch khác! Bạn đã đặt lịch này rồi hoặc lịch đã quá thời gian để đặt. ' }));
+            console.error("❌ Booking error:", error);
+
+            // Xử lý các loại lỗi khác nhau
+            let errorMessage = 'Có lỗi xảy ra khi đặt lịch khám.';
+
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            dispatch(setMessage({
+                type: 'error',
+                content: "Bạn đã đặt lịch này rồi hoặc ca làm việc của bác sĩ không khả dụng!"
+            }));
         }
     };
     return (
@@ -338,9 +357,11 @@ function AppointmentReviewPage() {
                                             label: "Ngày khám",
                                             value: (
                                                 <>
-                                                    {stepData?.date || "Không rõ"} (
+                                                    {stepData?.date
+                                                        ? dayjs(stepData.date).format("DD/MM/YYYY")
+                                                        : "Không rõ"} (
                                                     <span style={{ fontWeight: 500 }}>
-                                                        {stepData?.shift === 'morning' ? 'Buổi sáng' : 'Buổi chiều'}
+                                                        {stepData?.shift === "morning" ? "Buổi sáng" : "Buổi chiều"}
                                                     </span>
                                                     )
                                                 </>

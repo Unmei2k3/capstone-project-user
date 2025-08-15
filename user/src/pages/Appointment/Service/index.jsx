@@ -32,7 +32,6 @@ function AppointmentService() {
         key: index + 1,
         id: s.id,
         name: s.name,
-        schedule: 'Lịch khám: Thứ 2, 3, 4, 5, 6, 7, CN',
         price: s.price.toLocaleString('vi-VN') + ' đ',
     })) || [];
     const navigate = useNavigate();

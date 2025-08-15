@@ -88,9 +88,7 @@ const BookingDetailDrawer = ({ booking, visible, onClose }) => {
             <Descriptions.Item label="Ngày khám">
               <CalendarOutlined /> {booking.bookingDate}
             </Descriptions.Item>
-            <Descriptions.Item label="Thời gian khám">
-              <ClockCircleOutlined /> {booking.appointmentTime}
-            </Descriptions.Item>
+
             {booking.workDate && (
               <Descriptions.Item label="Ngày làm việc của bác sĩ">
                 <CalendarOutlined /> {booking.workDate}
@@ -219,7 +217,7 @@ const BookingDetailDrawer = ({ booking, visible, onClose }) => {
         </div>
 
         {/* ✅ Debug info in development */}
-       
+
 
         <Divider />
 
