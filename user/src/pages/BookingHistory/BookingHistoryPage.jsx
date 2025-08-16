@@ -170,7 +170,7 @@ const BookingHistory = () => {
 
                 return {
                     id: appointment.id,
-                    bookingId: `BK${String(appointment.id).padStart(6, '0')}`,
+                    bookingId: `${String(appointment.id).padStart(6, '0')}`,
                     bookingDate: formattedDate,
                     appointmentTime: formattedTime,
                     appointmentDate: parsedDate, // ✅ Store as dayjs object for filtering

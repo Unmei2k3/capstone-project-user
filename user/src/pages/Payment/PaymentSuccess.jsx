@@ -154,7 +154,7 @@ const PaymentSuccess = () => {
     };
 
     const handleViewAppointments = () => {
-        navigate('/appointments');
+        navigate('/booking-history');
     };
 
     const handlePrintReceipt = () => {
