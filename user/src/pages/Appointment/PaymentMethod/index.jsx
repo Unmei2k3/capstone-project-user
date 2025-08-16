@@ -113,24 +113,29 @@ function PaymentMethod({ onNext, defaultValue, infomationValue, onBack }) {
                 <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
                 <span style={{ fontWeight: 500 }}>Dịch vụ:</span> {infomationValue.serviceName}
               </div>
+              {defaultValue?.specialty?.name && (
+                <div style={{ marginBottom: 8 }}>
+                  <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
+                  <span style={{ fontWeight: 500 }}>Chuyên khoa:</span> {defaultValue.specialty.name}
+                </div>
+              )}
+
+              {defaultValue?.doctor?.user?.fullname && (
+                <div style={{ marginBottom: 8 }}>
+                  <CalendarOutlined style={{ color: "#00bfff", marginRight: 8 }} />
+                  <span style={{ fontWeight: 500 }}>Bác sĩ: {defaultValue.doctor.user.fullname}</span>
+                </div>
+              )}
               <div style={{ marginBottom: 8 }}>
                 <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
-                <span style={{ fontWeight: 500 }}>Chuyên khoa:</span> {defaultValue?.specialty?.name}
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <CalendarOutlined
-                  style={{ color: "#00bfff", marginRight: 8 }}
-                />
-                <span style={{ fontWeight: 500 }}>
-                  Bác sĩ: {defaultValue?.doctor?.user?.fullname}
-                </span>
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <CalendarOutlined style={{ color: '#00bfff', marginRight: 8 }} />
-                <span style={{ fontWeight: 500 }}>Ngày khám:</span> {defaultValue?.date}
+                <span style={{ fontWeight: 500 }}>Ngày khám:</span>{" "}
+                {defaultValue?.date
+                  ? dayjs(defaultValue.date).format("DD/MM/YYYY")
+                  : "Chưa có ngày khám"}
 
                 <span style={{ fontWeight: 500 }}>
-                  {" "}({defaultValue?.shift === 'morning' ? 'Buổi sáng' : 'Buổi chiều'})
+                  {" "}
+                  ({defaultValue?.shift === 'morning' ? 'Buổi sáng' : 'Buổi chiều'})
                 </span>
               </div>
               <div style={{ marginBottom: 8 }}>

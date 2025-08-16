@@ -105,8 +105,19 @@ function HospitalDetail() {
                                     }
                                 >
                                     <Text strong>Địa chỉ: </Text><Text>{hospital.address || "Chưa có thông tin"}</Text><br />
-                                    <Text strong>Giờ mở cửa: </Text><Text>{hospital.openTime ? new Date(hospital.openTime).toLocaleTimeString() : "Chưa có"}</Text><br />
-                                    <Text strong>Giờ đóng cửa: </Text><Text>{hospital.closeTime ? new Date(hospital.closeTime).toLocaleTimeString() : "Chưa có"}</Text><br />
+                                    <Text strong>Giờ mở cửa: </Text>
+                                    <Text>
+                                        {hospital.openTime
+                                            ? new Date(hospital.openTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                                            : "Chưa có"}
+                                    </Text><br />
+
+                                    <Text strong>Giờ đóng cửa: </Text>
+                                    <Text>
+                                        {hospital.closeTime
+                                            ? new Date(hospital.closeTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                                            : "Chưa có"}
+                                    </Text><br />
                                     <Text strong>Email: </Text><Text>{hospital.email || "Chưa có thông tin"}</Text><br />
                                     <Text strong>Số điện thoại: </Text><Text>{hospital.phoneNumber || "Chưa có thông tin"}</Text>
 

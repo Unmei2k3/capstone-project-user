@@ -411,7 +411,7 @@ function AppointmentReviewPage() {
                                         </span>
                                         <Button
                                             type="link"
-                                            onClick={() => navigate("/profile")}
+                                            onClick={() => navigate("/profile", { state: { from: "appointmentReview", returnData: stepData } })}
                                             icon={<EyeOutlined />}
                                         >
                                             Xem chi tiết

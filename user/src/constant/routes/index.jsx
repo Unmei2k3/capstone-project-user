@@ -97,20 +97,7 @@ export const routes = [
           </ProtectedRoute>
         )
       },
-      {
-        path: "account",
-        element: <ProtectedRoute allowedRoles={['Patient']} />,
-        children: [
-          {
-            path: "",
-            element: <UserAccount />,
-          },
-          {
-            path: "change-password",
-            element: <ChangePassword /> // đã vẽ report 3
-          },
-        ],
-      },
+  
 
       {
         path: "/patient",
@@ -132,10 +119,6 @@ export const routes = [
         ]
       },
 
-      {
-        path: "change-password",
-        element: <ChangePassword /> // đã vẽ
-      },
 
       {
         path: "*",
@@ -172,6 +155,11 @@ export const routes = [
         index: true,
         element: <UpadteProfile /> // đã vẽ report 3
       }
+      ,
+      {
+        path: "change-password",
+        element: <ChangePassword /> // đã vẽ
+      },
     ]
   },
   {

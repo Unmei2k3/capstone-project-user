@@ -222,7 +222,7 @@ function AppointmentService() {
                 {selectedServiceDetail && (
                     <div>
                         <p><strong>Tên dịch vụ:</strong> {selectedServiceDetail.name}</p>
-                        <p><strong>Lịch khám:</strong> {selectedServiceDetail.schedule}</p>
+                        {/* <p><strong>Lịch khám:</strong> {selectedServiceDetail.schedule}</p> */}
                         <p><strong>Giá:</strong> {selectedServiceDetail.price}</p>
                     </div>
                 )}

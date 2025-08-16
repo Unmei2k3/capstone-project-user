@@ -16,20 +16,26 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
             }));
             setTimeout(() => {
                 setRedirectToLogin(true);
-            }, 1000); 
+            }, 1000);
         }
     }, [isInitializing, user, accessToken, dispatch]);
 
     if (isInitializing) {
-        return <div>...Loading</div>; 
+        return <div>...Loading</div>;
     }
 
     if (redirectToLogin) {
         return <Navigate to="/login" replace />;
     }
-
+    if (allowedRoles && !allowedRoles.includes(user?.role?.name)) {
+        dispatch(setMessage({
+            type: 'error',
+            content: 'Bạn không có quyền truy cập trang này!',
+        }));
+        return <Navigate to="/unauthorized" replace />;
+    }
     if (!user || !accessToken) {
-        return <div></div>; 
+        return <div></div>;
     }
 
     return children;

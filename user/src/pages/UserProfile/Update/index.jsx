@@ -6,7 +6,7 @@ import "dayjs/locale/vi";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { getProvinces } from "../../../services/provinceService";
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { updateUser } from "../../../services/userService";
 import { updateUserSlice } from "../../../redux/slices/userSlice";
 import { clearMessage, setMessage } from "../../../redux/slices/messageSlice";
@@ -24,6 +24,8 @@ function UpadteProfile() {
   const [messageApi, contextHolder] = message.useMessage();
   const messageState = useSelector((state) => state.message);
   const [form] = Form.useForm();
+  const location = useLocation();
+  const fromPage = location.state?.from;
   useEffect(() => {
     if (messageState) {
       messageApi.open({
@@ -101,10 +103,19 @@ function UpadteProfile() {
     try {
       const res = await updateUser(mappedData);
       console.log("Update response:", res);
-
+      if (fromPage === "appointmentReview") {
+        setTimeout(() => {
+          dispatch(updateUserSlice(mappedData));
+          if (fromPage === "appointmentReview") {
+            window.history.back();
+          } else {
+           
+          }
+        }, 3000);
+      }
       console.log("Update successful, dispatching updateUserSlice with:" + mappedData);
       dispatch(updateUserSlice(mappedData));
-      dispatch(setMessage({ type: 'success', content: 'Cập nhật thành công!' }));
+      dispatch(setMessage({ type: 'success', content: 'Cập nhật thành công, bạn đã đủ điều kiện để đặt khám!' }));
     } catch (error) {
       dispatch(setMessage({ type: 'error', content: 'Cập nhật thất bại. Vui lòng kiểm tra thông tin và thử lại!' }));
       console.error(error);
@@ -297,7 +308,7 @@ function UpadteProfile() {
                       ]}
                     >
                       <Input
-                        prefix={<MailOutlined />} placeholder="Nhập email" size="large" disabled/>
+                        prefix={<MailOutlined />} placeholder="Nhập email" size="large" disabled />
                     </Form.Item>
                   </Col>
                 </Row>
