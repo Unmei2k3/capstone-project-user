@@ -251,35 +251,82 @@ main {
 }
 
 .footer {
-    text-align: center;
-    background-color: #23bef1;
+    background: linear-gradient(90deg, #e0f7fa 0%, #ffffff 100%);
+    padding: 40px 0 20px 0;
+    color: #222;
+    font-size: 15px;
+    border-top: 1px solid #e0e0e0;
 
     .footer-content {
         display: flex;
         justify-content: space-between;
+        align-items: flex-start;
+        max-width: 1200px;
+        margin: 0 auto;
         flex-wrap: wrap;
+        gap: 32px;
+    }
 
-        .footer-section {
-            flex: 1;
-            min-width: 250px;
-            margin-bottom: 20px;
+    .footer-section {
+        flex: 1 1 250px;
+        min-width: 220px;
+        margin-bottom: 16px;
 
-            h4 {
-                color: white;
-                margin-bottom: 16px;
+        h4 {
+            color: #1890ff;
+            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        ul {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+
+            li {
+                margin-bottom: 8px;
             }
+        }
+    }
 
-            .footer-social {
-                display: flex;
-                gap: 16px;
-                font-size: 24px;
+    .footer-brand {
+        text-align: left;
 
-                a {
-                    color: white;
+        .footer-logo {
+            width: 48px;
+            margin-bottom: 10px;
+            display: block;
+        }
 
-                    &:hover {
-                        color: #1890ff;
-                    }
+        h4 {
+            margin-top: 0;
+        }
+
+        p {
+            margin: 0 0 6px 0;
+        }
+
+        .footer-copyright {
+            color: #888;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+    }
+
+    .footer-social {
+        .footer-social-icons {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+
+            a {
+                font-size: 28px;
+                color: #1890ff;
+                transition: color 0.2s;
+
+                &:hover {
+                    color: #fa8c16;
                 }
             }
         }
@@ -331,5 +378,17 @@ main {
                 }
             }
         }
+    }
+
+    .footer .footer-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+    }
+
+    .footer .footer-section {
+        min-width: 0;
+        width: 100%;
+        margin-bottom: 24px;
     }
 }

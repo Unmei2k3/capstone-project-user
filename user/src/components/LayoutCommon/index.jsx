@@ -288,28 +288,33 @@ function LayoutCommon() {
 
             </main>
             <Footer className="footer">
-                <div className="footer-content">
-                    <div className="footer-section">
-                        <h4>DABS Medical Booking</h4>
-                        <p>Hỗ trợ đặt khám trực tuyến 24/7</p>
-                        <p>© {new Date().getFullYear()} Created by G81</p>
-                    </div>
-                    <div className="footer-section">
-                        <h4>Liên hệ</h4>
-                        <p><strong>Hotline:</strong> 1900 1234</p>
-                        <p><strong>Email:</strong> contact@dabs.com.vn</p>
-                        <p><strong>Địa chỉ:</strong> 123 Đường ABC, Quận XYZ, TP.HCM</p>
-                    </div>
-                    <div className="footer-section">
-                        <h4>Kết nối với chúng tôi</h4>
-                        <div className="footer-social">
-                            <a href="#"><FacebookOutlined /></a>
-                            <a href="#"><YoutubeOutlined /></a>
-                            <a href="#"><TikTokOutlined /></a>
-                        </div>
-                    </div>
-                </div>
-            </Footer>
+    <div className="footer-content">
+        <div className="footer-section footer-brand">
+            <img src={logo} alt="DABS Logo" className="footer-logo" />
+            <h4>DABS Medical Booking</h4>
+            <p>Hỗ trợ đặt khám trực tuyến 24/7</p>
+            <p className="footer-copyright">
+                © {new Date().getFullYear()} G81 Team
+            </p>
+        </div>
+        <div className="footer-section footer-contact">
+            <h4>Liên hệ</h4>
+            <ul>
+                <li><strong>Hotline:</strong> 1900 1234</li>
+                <li><strong>Email:</strong> contact@dabs.com.vn</li>
+                <li><strong>Địa chỉ:</strong> 123 Đường ABC, Quận XYZ, TP.HCM</li>
+            </ul>
+        </div>
+        <div className="footer-section footer-social">
+            <h4>Kết nối với chúng tôi</h4>
+            <div className="footer-social-icons">
+                <a href="#" aria-label="Facebook"><FacebookOutlined /></a>
+                <a href="#" aria-label="Youtube"><YoutubeOutlined /></a>
+                <a href="#" aria-label="TikTok"><TikTokOutlined /></a>
+            </div>
+        </div>
+    </div>
+</Footer>
         </Layout >
     </>
 }

@@ -57,7 +57,7 @@ export const routes = [
       },
       {
         path: '/user-guide',
-        element: <UserGuide />
+        element: <UserGuide /> // đã vẽ
 
       },
       {
@@ -83,7 +83,7 @@ export const routes = [
       },
       {
         path: "doctor-list",
-        element: <DoctorList />
+        element: <DoctorList /> // bỏ
       },
       {
         path: "/chat",
@@ -208,11 +208,11 @@ export const routes = [
       },
       {
         path: "doctor",
-        element: <AppointmentDoctor />
+        element: <AppointmentDoctor />// đã vẽ report 3
       },
       {
         path: "specialty",
-        element: <AppointmentSpecialty />
+        element: <AppointmentSpecialty /> // đã vẽ
       },
       {
         path: "accept-infomation",
